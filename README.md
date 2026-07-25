@@ -7,7 +7,7 @@
 <h1><i>LLM Agent RL Lab</i></h1>
 
 <p>
-  复现和拆解前沿 LLM 强化学习算法，用更简单的代码和更低的 GPU 门槛，把 GRPO、OPD、OPSD、GSPO、DAPO、Search-R1、Slime 等方法跑起来，方便复现。
+  复现和拆解前沿 LLM 强化学习算法，用更简单的代码和更低的 GPU 门槛，把 GRPO、OPD、OPSD、GSPO、DAPO、Search-R1、ReTool、Slime 等方法跑起来，方便复现。
 </p>
 
 <p>
@@ -42,6 +42,7 @@
 | [第 2 篇](./02-opd/readme.md) | Medical OPD | 从 Medical SFT 出发，用 SAR-OPD 和 IDT-OPD 增强医疗能力，同时保持通用能力 |
 | [第 3 篇](./03-search-r1/readme.md) | Search-R1 | 用 Qwen3.5-4B、PyTRIO 和知乎搜索 API 复现多轮搜索 RL |
 | [第 4 篇](./04-opsd/readme.md) | OPSD | 用固定的 step-0 Teacher 蒸馏 Student 自采样轨迹 |
+| [第 5 篇](./05-retool/readme.md) | ReTool | 用 Qwen3.5-4B、PyTRIO 和本地代码沙箱复现代码交织的 Agentic RL |
 
 ## 快速启动
 
@@ -56,13 +57,21 @@ uv sync
 如果只想把某个 demo 脚本拎到自己的项目里跑：
 
 ```bash
-uv add "datasets>=5.0.0" "matplotlib>=3.11.0" "numpy>=2.5.1" "openai>=2.44.0" "python-dotenv>=1.2.2" "pytrio==0.2.3" "swanlab>=0.8.4" "torch>=2.12.1" "tqdm>=4.68.3"
+uv add "datasets>=5.0.0" "matplotlib>=3.11.0" "numpy>=2.5.1" "openai>=2.44.0" "python-dotenv>=1.2.2" "pytrio==0.2.4" "swanlab>=0.8.4" "torch>=2.12.1" "tqdm>=4.68.3"
 ```
 
 ## Star History
 
 <div align="center">
   <img src="./images/github-star-history.png" alt="GitHub Star History" width="700" />
+</div>
+
+## Contributor
+
+<div align=center style="margin-top: 30px;">
+  <a href="https://github.com/KMnO4-zx/llm-agent-rl-lab/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=KMnO4-zx/llm-agent-rl-lab" />
+  </a>
 </div>
 
 ## License
