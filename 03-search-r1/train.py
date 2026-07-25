@@ -554,14 +554,14 @@ def main(args: argparse.Namespace) -> None:
                     leave=False,
                 ) as rollout_progress:
                     # 为每道题采样 group_size 条多轮搜索轨迹，并计算 reward 和组内 advantage。
-                   trajectories = rollout_batch(
-                    sampling_client=sampling_client,
-                    tokenizer=tokenizer,
-                    search_client=search_client,
-                    examples=batch,
-                    config=rollout_config,
-                    progress_callback=rollout_progress.update,
-                )
+                    trajectories = rollout_batch(
+                        sampling_client=sampling_client,
+                        tokenizer=tokenizer,
+                        search_client=search_client,
+                        examples=batch,
+                        config=rollout_config,
+                        progress_callback=rollout_progress.update,
+                    )
 
                 # 每条有训练信号的完整轨迹只构造一个 Datum，再按 padding 矩形动态装箱。
                 training_progress.set_postfix(phase="build datums", refresh=True)
