@@ -555,11 +555,11 @@ def main(args: argparse.Namespace) -> None:
                 ) as rollout_progress:
                     # 为每道题采样 group_size 条多轮搜索轨迹，并计算 reward 和组内 advantage。
                     trajectories = rollout_batch(
-                        sampling_client,
-                        tokenizer,
-                        search_client,
-                        batch,
-                        rollout_config,
+                        sampling_client=sampling_client,
+                        tokenizer=tokenizer,
+                        search_client=search_client,
+                        examples=batch,
+                        config=rollout_config,
                         progress_callback=rollout_progress.update,
                     )
 
