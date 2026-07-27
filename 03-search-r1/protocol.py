@@ -89,16 +89,6 @@ def build_prompt(tokenizer: Any, messages: list[dict[str, Any]]) -> list[int]:
     return _render_chat(tokenizer, messages, add_generation_prompt=True)
 
 
-def _encoded_text_tokens(tokenizer: Any, text: str) -> list[int]:
-    """把普通文本编码结果统一成一维 token 列表。"""
-    encoded = tokenizer.encode(text, add_special_tokens=False)
-    if hasattr(encoded, "tolist"):
-        encoded = encoded.tolist()
-    if encoded and isinstance(encoded[0], list):
-        encoded = encoded[0]
-    return [int(token) for token in encoded]
-
-
 def _suffix_prefix_overlap(tokens: list[int], suffix: list[int]) -> int:
     """返回 tokens 末尾与 suffix 开头的最长重叠长度。"""
     for length in range(min(len(tokens), len(suffix)), 0, -1):
@@ -117,6 +107,17 @@ def build_next_prompt(
 ) -> list[int]:
     """用真实采样 token 接上 assistant 结束符和新的 tool observation。"""
     canonical_prompt = build_prompt(tokenizer, messages_before_assistant)
+    # Qwen3.5 会 trim 消息 content，不能靠重新编码采样文本定位结束符。
+    # 用空 assistant 单独提取模板闭合 token，真实采样 token 始终原样保留。
+    empty_assistant_end = _render_chat(
+        tokenizer,
+        [*messages_before_assistant, {"role": "assistant", "content": ""}],
+        add_generation_prompt=False,
+    )
+    if empty_assistant_end[: len(canonical_prompt)] != canonical_prompt:
+        raise ValueError("chat template 无法从空 assistant 提取结束边界")
+    assistant_closing_tokens = empty_assistant_end[len(canonical_prompt) :]
+
     assistant_message = {"role": "assistant", "content": assistant_text}
     messages_with_assistant = [*messages_before_assistant, assistant_message]
     canonical_assistant_end = _render_chat(
@@ -124,11 +125,6 @@ def build_next_prompt(
         messages_with_assistant,
         add_generation_prompt=False,
     )
-    canonical_text_tokens = _encoded_text_tokens(tokenizer, assistant_text)
-    canonical_action = [*canonical_prompt, *canonical_text_tokens]
-    if canonical_assistant_end[: len(canonical_action)] != canonical_action:
-        raise ValueError("chat template 无法从 assistant 原始文本提取结束边界")
-    assistant_closing_tokens = canonical_assistant_end[len(canonical_action) :]
 
     canonical_next_prompt = build_prompt(
         tokenizer,
