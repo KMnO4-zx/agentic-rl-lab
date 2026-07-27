@@ -389,10 +389,9 @@ def main(args: argparse.Namespace) -> None:
         if run is not None:
             swanlab.log({"save/weights_path": swanlab.Text(save_result.path)}, step=args.steps)
     finally:
-        # 无论中间是否报错，都尽量正常结束日志和远程训练 client。
+        # 无论中间是否报错，都尽量正常结束日志。
         if run is not None:
             swanlab.finish()
-        training_client.close()
 
 
 if __name__ == "__main__":
