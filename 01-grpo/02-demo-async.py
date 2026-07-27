@@ -786,7 +786,6 @@ async def main(config: GRPOConfig) -> None:
     finally:
         if swanlab_run is not None:
             swanlab_run.finish()
-        await training_client.close_async()
 
 
 if __name__ == "__main__":
