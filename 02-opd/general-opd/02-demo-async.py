@@ -348,7 +348,6 @@ async def main(args: argparse.Namespace) -> None:
     print(f"Loaded {len(dataset)} DeepMath prompts")
 
     service_client = trio.ServiceClient()
-    training_client = None
     swanlab_run = None
 
     try:
@@ -476,11 +475,9 @@ async def main(args: argparse.Namespace) -> None:
         if swanlab_run is not None:
             swanlab.log({"save/weights_path": swanlab.Text(save_result.path)}, step=args.steps)
     finally:
-        # 无论中间是否报错，都尽量正常结束日志和远程训练 client。
+        # 无论中间是否报错，都尽量正常结束日志。
         if swanlab_run is not None:
             swanlab.finish()
-        if training_client is not None:
-            await training_client.close_async()
 
 
 if __name__ == "__main__":
