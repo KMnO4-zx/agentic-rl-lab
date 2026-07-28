@@ -1,8 +1,9 @@
-"""清洗并切分 DAPO-Math-17K。
+"""准备 DAPO-Math-17K 训练集和 AIME25 评测集。
 
-本地 parquet 是约 100 倍重复版本，不能直接拿来训练。本脚本按规范化后的
-question 去重，丢弃同题但 ground truth 冲突的组，再用固定 seed 切出 50 条
-dev smoke-test 数据，其余作为训练集。
+DAPO-Math 的官方 parquet 是约 100 倍重复版本，不能直接拿来训练。本脚本按
+规范化后的 question 去重，丢弃同题但 ground truth 冲突的组，再用固定 seed
+切出 50 条 dev smoke-test 数据，其余作为训练集。同时下载固定版本的 AIME25，
+供 ``eval.py`` 使用。
 
 运行：
 
@@ -16,12 +17,19 @@ from dataclasses import dataclass
 import json
 from pathlib import Path
 import random
+import shutil
 from typing import Any, Iterable
 
-from datasets import load_dataset
+from datasets import Dataset, DatasetDict, load_dataset, load_from_disk
 
 
-DATASET_ID = "BytedTsinghua-SIA/DAPO-Math-17k"
+DAPO_DATASET_ID = "BytedTsinghua-SIA/DAPO-Math-17k"
+DAPO_REVISION = "65877096c24ffa7abc4e4fa5edb95cf3413a5674"
+AIME25_DATASET_ID = "yentinglin/aime_2025"
+AIME25_REVISION = "6f71d77b0b89b9dabe07ab466c51df33f514df7f"
+AIME25_OUTPUT_NAME = "aime_2025"
+AIME25_EXPECTED_ROWS = 30
+AIME25_REQUIRED_COLUMNS = ("problem", "answer")
 PROMPT_PREFIX = (
     "Solve the following math problem step by step. The last line of your response "
     "should be of the form Answer: $Answer (without quotes) where $Answer is the "
@@ -161,27 +169,36 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--raw",
         type=Path,
-        default=script_dir.parent
-        / "05-retool"
-        / "datasets"
-        / "raw"
-        / "dapo-math-17k.parquet",
-        help="本地 DAPO-Math parquet；不存在时从 Hugging Face Hub 流式读取",
+        default=None,
+        help="可选的本地 DAPO-Math parquet；默认从 Hugging Face Hub 读取",
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
         default=script_dir / "datasets",
+        help="训练集、dev 集和 AIME25 的保存目录。",
     )
-    parser.add_argument("--dev-size", type=int, default=50)
-    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--dev-size",
+        type=int,
+        default=50,
+        help="从去重后的训练题中切出的 dev 题目数。",
+    )
+    parser.add_argument("--seed", type=int, default=42, help="数据切分随机种子。")
+    parser.add_argument(
+        "--force-aime25",
+        action="store_true",
+        help="删除并重新下载已经存在的本地 AIME25。",
+    )
     return parser.parse_args()
 
 
 def load_source(args: argparse.Namespace) -> Iterable[dict[str, Any]]:
     """流式读取本地 parquet 或官方 Hub 数据，避免展开百万行到内存。"""
     cache_dir = args.output_dir / ".hf-cache"
-    if args.raw.exists():
+    if args.raw is not None:
+        if not args.raw.is_file():
+            raise FileNotFoundError(f"找不到本地 DAPO-Math parquet：{args.raw}")
         # datasets 的 IterableDataset 会初始化 torch shared memory；数据准备不需要
         # PyTorch，直接按 Arrow record batch 读取更轻量，也不会复制一份 parquet cache。
         import pyarrow.parquet as parquet
@@ -201,15 +218,95 @@ def load_source(args: argparse.Namespace) -> Iterable[dict[str, Any]]:
 
         return iter_parquet()
     return load_dataset(
-        DATASET_ID,
+        DAPO_DATASET_ID,
+        revision=DAPO_REVISION,
         split="train",
         cache_dir=str(cache_dir),
+        streaming=True,
     )
 
 
+def as_dataset(dataset: Dataset | DatasetDict) -> Dataset:
+    """把本地 AIME25 的 Dataset/单 split DatasetDict 统一为 Dataset。"""
+    if isinstance(dataset, Dataset):
+        return dataset
+    if "train" not in dataset:
+        raise ValueError(f"AIME25 缺少 train split：{list(dataset)}")
+    return dataset["train"]
+
+
+def validate_aime25(dataset: Dataset, location: str) -> None:
+    """校验 AIME25 的行数、字段和首尾样本。"""
+    missing = sorted(
+        set(AIME25_REQUIRED_COLUMNS) - set(dataset.column_names)
+    )
+    if missing:
+        raise ValueError(
+            f"{AIME25_DATASET_ID} 在 {location} 缺少字段 {missing}"
+        )
+    if len(dataset) != AIME25_EXPECTED_ROWS:
+        raise ValueError(
+            f"{AIME25_DATASET_ID} 在 {location} 应有 "
+            f"{AIME25_EXPECTED_ROWS} 题，实际为 {len(dataset)} 题"
+        )
+    for index in (0, len(dataset) - 1):
+        empty = [
+            column
+            for column in AIME25_REQUIRED_COLUMNS
+            if not str(dataset[index].get(column, "")).strip()
+        ]
+        if empty:
+            raise ValueError(f"AIME25 第 {index} 题存在空字段：{empty}")
+
+
+def prepare_aime25(
+    output_dir: Path,
+    *,
+    force: bool,
+) -> Path:
+    """下载并校验本项目独立保存的固定版本 AIME25。"""
+    output_path = output_dir / AIME25_OUTPUT_NAME
+    if output_path.exists() and not force:
+        local = as_dataset(load_from_disk(str(output_path)))
+        validate_aime25(local, str(output_path))
+        print(
+            f"[skip] AIME25: 本地数据已存在且校验通过 "
+            f"({len(local)} rows) -> {output_path}"
+        )
+        return output_path
+
+    if output_path.exists():
+        shutil.rmtree(output_path)
+
+    cache_dir = output_dir / ".hf-cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    print(
+        f"[download] {AIME25_DATASET_ID}@{AIME25_REVISION} [train]"
+    )
+    dataset = load_dataset(
+        AIME25_DATASET_ID,
+        revision=AIME25_REVISION,
+        split="train",
+        cache_dir=str(cache_dir),
+    )
+    if not isinstance(dataset, Dataset):
+        raise TypeError(f"期望 Dataset，实际得到 {type(dataset)!r}")
+    validate_aime25(dataset, "Hugging Face")
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    dataset.save_to_disk(str(output_path))
+    saved = as_dataset(load_from_disk(str(output_path)))
+    validate_aime25(saved, str(output_path))
+    print(f"[done] AIME25: {len(saved)} rows -> {output_path}")
+    return output_path
+
+
 def main() -> None:
-    """生成去重后的 ``train.jsonl`` 和 ``dev.jsonl``。"""
+    """生成训练/dev JSONL，并下载本项目自己的 AIME25。"""
     args = parse_args()
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+    prepare_aime25(args.output_dir, force=args.force_aime25)
+
     records, stats = deduplicate_rows(load_source(args))
     if not records:
         raise ValueError("DAPO-Math 清洗去重后为空")

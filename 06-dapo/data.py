@@ -1,7 +1,6 @@
 """读取并循环消费 ``prepare_data.py`` 生成的 DAPO-Math 数据。"""
 
 from __future__ import annotations
-
 from dataclasses import dataclass
 import json
 from pathlib import Path

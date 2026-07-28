@@ -1,15 +1,12 @@
 """GRPO/DAPO 共用的 group rollout 与 Dynamic Sampling。"""
 
 from __future__ import annotations
-
 import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass
 import math
 from typing import Any, Literal
-
 import pytrio as trio
-
 from data import MathExample
 from reward import RewardResult, score_answer
 
@@ -24,10 +21,10 @@ QUESTION_SUFFIX = (
 class RolloutConfig:
     """采样与 group 构造参数。"""
 
+    max_prompt_tokens: int
+    max_tokens: int
+    overlong_cache: int
     group_size: int = 8
-    max_prompt_tokens: int = 4095
-    max_tokens: int = 12288
-    overlong_cache: int = 2048
     temperature: float = 1.0
     top_p: float = 1.0
     top_k: int = -1
@@ -102,6 +99,11 @@ class RolloutBatch:
         return len(self.train_groups) / max(len(self.candidate_groups), 1)
 
     @property
+    def effective_fill_ratio(self) -> float:
+        """实际有效组数量占目标训练组数量的比例。"""
+        return len(self.train_groups) / max(self.requested_groups, 1)
+
+    @property
     def oversample_ratio(self) -> float:
         return len(self.candidate_groups) / max(self.requested_groups, 1)
 
@@ -131,14 +133,8 @@ def build_prompt_tokens(
 
 
 def stop_sequences(tokenizer: Any) -> list[str]:
-    """返回去重后的 chat 终止字符串。"""
-    return list(
-        dict.fromkeys(
-            token
-            for token in (tokenizer.eos_token, "<|im_end|>")
-            if isinstance(token, str) and token
-        )
-    )
+    """返回 chat 终止字符串。"""
+    return [tokenizer.eos_token] if tokenizer.eos_token else ["<|im_end|>"]
 
 
 def read_sequence(sequence: Any, tokenizer: Any) -> tuple[list[int], list[float], str]:
@@ -260,13 +256,14 @@ async def sample_groups_async(
     *,
     candidate_start: int,
     enable_overlong: bool,
+    progress_callback: Callable[[int], None] | None = None,
 ) -> list[RolloutGroup]:
     """在设定并发度内采样多道题，并保持输入顺序。"""
     semaphore = asyncio.Semaphore(config.concurrency)
 
     async def sample_one(offset: int, example: MathExample) -> RolloutGroup:
         async with semaphore:
-            return await sample_group_async(
+            group = await sample_group_async(
                 sampling_client,
                 tokenizer,
                 example,
@@ -274,6 +271,9 @@ async def sample_groups_async(
                 candidate_index=candidate_start + offset,
                 enable_overlong=enable_overlong,
             )
+            if progress_callback is not None:
+                progress_callback(1)
+            return group
 
     return list(
         await asyncio.gather(
@@ -294,8 +294,10 @@ async def collect_rollout_batch(
     requested_groups: int,
     config: RolloutConfig,
     max_candidate_groups: int,
+    progress_callback: Callable[[int], None] | None = None,
+    progress_total_callback: Callable[[int], None] | None = None,
 ) -> RolloutBatch:
-    """执行固定 GRPO batch 或补采到达标的 DAPO Dynamic Sampling。"""
+    """执行固定 GRPO batch，或在候选上限内补采 DAPO 有效组。"""
     config.validate()
     if algorithm not in {"grpo", "dapo"}:
         raise ValueError(f"unsupported algorithm: {algorithm}")
@@ -310,6 +312,8 @@ async def collect_rollout_batch(
 
     if algorithm == "grpo":
         examples = take_examples(requested_groups)
+        if progress_total_callback is not None:
+            progress_total_callback(len(examples))
         candidate_groups = await sample_groups_async(
             sampling_client,
             tokenizer,
@@ -317,6 +321,7 @@ async def collect_rollout_batch(
             config,
             candidate_start=0,
             enable_overlong=False,
+            progress_callback=progress_callback,
         )
         train_groups = [
             group for group in candidate_groups if is_effective_group(group)
@@ -325,13 +330,13 @@ async def collect_rollout_batch(
         while len(train_groups) < requested_groups:
             available = max_candidate_groups - len(candidate_groups)
             if available <= 0:
-                raise RuntimeError(
-                    "Dynamic Sampling exhausted max_candidate_groups: "
-                    f"effective={len(train_groups)}, requested={requested_groups}, "
-                    f"candidates={len(candidate_groups)}"
-                )
+                # 候选预算耗尽后返回已经收集到的有效组：部分 batch 仍可训练，
+                # 一个有效组都没有时由训练循环跳过本 step 的参数更新。
+                break
             round_size = min(requested_groups - len(train_groups), available)
             examples = take_examples(round_size)
+            if progress_total_callback is not None:
+                progress_total_callback(len(examples))
             new_groups = await sample_groups_async(
                 sampling_client,
                 tokenizer,
@@ -339,6 +344,7 @@ async def collect_rollout_batch(
                 config,
                 candidate_start=len(candidate_groups),
                 enable_overlong=enable_overlong,
+                progress_callback=progress_callback,
             )
             candidate_groups.extend(new_groups)
             train_groups.extend(

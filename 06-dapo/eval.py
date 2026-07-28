@@ -1,15 +1,14 @@
-"""在 AIME25 上公平评测 base、GRPO 或 DAPO sampler weights。
+"""在 AIME25 上评测 base model 或传入的 PyTRIO LoRA sampler weights。
 
-Base：
+Base model：
 
-    uv run python 06-dapo/eval.py --algorithm base
+    uv run python eval.py
 
-Checkpoint：
+LoRA：
 
-    uv run python 06-dapo/eval.py \
-        --algorithm dapo \
-        --checkpoint-step 100 \
-        --model-path trio://<sampler-weights-path>
+    uv run python eval.py \
+        --model-path trio://run_xxx/sampler_weights/weights-name \
+        --output eval-results/aime25-grpo-10steps.jsonl
 """
 
 from __future__ import annotations
@@ -31,21 +30,14 @@ from rollout import build_prompt_tokens, stop_sequences
 trio.configure(sampling_timeout=18000)
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-DEFAULT_DATASET_PATH = (
-    SCRIPT_DIR.parent / "04-opsd" / "datasets" / "aime_2025"
-)
+DEFAULT_DATASET_PATH = SCRIPT_DIR / "datasets" / "aime_2025"
+DEFAULT_OUTPUT_PATH = SCRIPT_DIR / "eval-results" / "aime25-base.jsonl"
 EXPECTED_ROWS = 30
 
 
 def parse_args() -> argparse.Namespace:
-    """解析 AIME25 评测参数，并避免错标 base/checkpoint。"""
+    """解析 AIME25 评测参数。"""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--algorithm",
-        choices=["base", "grpo", "dapo"],
-        default="base",
-    )
-    parser.add_argument("--checkpoint-step", type=int, default=0)
     parser.add_argument(
         "--dataset-path",
         type=Path,
@@ -55,18 +47,31 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--model-path",
         default=None,
-        help="save_weights_for_sampler 返回的 trio:// 路径",
+        help="可选；save_weights_for_sampler 返回的 trio:// 路径，不传则评测 base model",
     )
     parser.add_argument("--val-n", type=int, default=12)
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--concurrency", type=int, default=15)
-    parser.add_argument("--max-prompt-tokens", type=int, default=4095)
-    parser.add_argument("--max-tokens", type=int, default=12288)
+    parser.add_argument(
+        "--max-prompt-tokens",
+        type=int,
+        default=4095,
+    )
+    parser.add_argument(
+        "--max-tokens",
+        type=int,
+        default=8192,
+    )
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--top-p", type=float, default=1.0)
     parser.add_argument("--top-k", type=int, default=-1)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--output", type=Path, default=None)
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="结果 JSONL 路径；base 默认写入 aime25-base.jsonl，LoRA 必须手动指定",
+    )
     args = parser.parse_args()
 
     for name in (
@@ -77,23 +82,13 @@ def parse_args() -> argparse.Namespace:
     ):
         if getattr(args, name) < 1:
             raise ValueError(f"--{name.replace('_', '-')} must be >= 1")
-    if args.limit < 0 or args.checkpoint_step < 0:
-        raise ValueError("--limit and --checkpoint-step must be >= 0")
+    if args.limit < 0:
+        raise ValueError("--limit must be >= 0")
     if args.temperature < 0 or not 0 < args.top_p <= 1:
         raise ValueError("invalid sampling temperature/top-p")
-    if args.algorithm == "base":
-        if args.model_path is not None or args.checkpoint_step != 0:
-            raise ValueError("base evaluation must not set model path/checkpoint step")
-        default_name = "aime25-base.jsonl"
-    else:
-        if not args.model_path:
-            raise ValueError("GRPO/DAPO evaluation requires --model-path")
-        if args.checkpoint_step < 1:
-            raise ValueError("GRPO/DAPO evaluation requires --checkpoint-step >= 1")
-        default_name = (
-            f"aime25-{args.algorithm}-step{args.checkpoint_step}.jsonl"
-        )
-    args.output = args.output or SCRIPT_DIR / "eval-results" / default_name
+    if args.model_path is not None and args.output is None:
+        raise ValueError("--model-path requires --output")
+    args.output = args.output or DEFAULT_OUTPUT_PATH
     return args
 
 
@@ -102,7 +97,7 @@ def load_aime25(path: Path, limit: int) -> Dataset:
     if not path.exists():
         raise FileNotFoundError(
             f"找不到 AIME25 数据：{path}\n"
-            "请先运行：uv run python 04-opsd/00-datasets.py --only aime25"
+            "请先运行：uv run python 06-dapo/prepare_data.py"
         )
     loaded = load_from_disk(str(path))
     dataset = loaded["train"] if isinstance(loaded, DatasetDict) else loaded
@@ -243,8 +238,6 @@ def summarize(
     return {
         "type": "summary",
         "dataset": "yentinglin/aime_2025",
-        "algorithm": args.algorithm,
-        "checkpoint_step": args.checkpoint_step,
         "base_model": args.base_model,
         "model_path": args.model_path,
         "temperature": args.temperature,
@@ -281,9 +274,11 @@ async def evaluate(args: argparse.Namespace) -> None:
     """创建采样 client，完成 AIME25 评测并落盘。"""
     dataset = load_aime25(args.dataset_path, args.limit)
     service_client = trio.ServiceClient()
+    client_kwargs = {"base_model": args.base_model}
+    if args.model_path is not None:
+        client_kwargs["model_path"] = args.model_path
     sampling_client = await service_client.create_sampling_client_async(
-        base_model=args.base_model,
-        model_path=args.model_path,
+        **client_kwargs
     )
     tokenizer = sampling_client.get_tokenizer()
     semaphore = asyncio.Semaphore(args.concurrency)
@@ -321,8 +316,9 @@ async def evaluate(args: argparse.Namespace) -> None:
             file.write(json.dumps(result, ensure_ascii=False) + "\n")
         file.write(json.dumps(summary, ensure_ascii=False) + "\n")
 
+    model_type = "base" if args.model_path is None else "LoRA"
     print(
-        f"AIME25 [{args.algorithm}] Average@{args.val_n}: "
+        f"AIME25 [{model_type}] Average@{args.val_n}: "
         f"{summary['average_at_n']:.2%} | "
         f"Pass@{args.val_n}: {summary['pass_at_n']:.2%} | "
         f"Format: {summary['format_rate']:.2%}"
