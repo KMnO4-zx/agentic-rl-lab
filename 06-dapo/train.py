@@ -7,10 +7,10 @@ uv run python train.py \
     --max-steps 10 \
     --groups-per-step 4 \
     --group-size 8 \
-    --max-prompt-tokens 1024 \
-    --max-tokens 8192 \
-    --overlong-cache 2048 \
-    --swanlab-mode disabled
+    --max-prompt-tokens 512 \
+    --max-tokens 4096 \
+    --overlong-cache 1024 \
+    --swanlab-mode online
 
 """
 
@@ -470,7 +470,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--groups-per-step",
         type=int,
-        default=16,
+        default=4,
         help=(
             "每个训练 batch 目标包含的题目组数；与 --group-size 的乘积"
             f"不得超过 {MAX_COMPLETIONS_PER_BATCH}。"
@@ -494,19 +494,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--max-prompt-tokens",
         type=int,
-        default=2048,
+        default=512,
         help="单条 prompt 的最大 token 数。",
     )
     parser.add_argument(
         "--max-tokens",
         type=int,
-        default=8192,
+        default=4096,
         help="单条 completion 的最大生成 token 数。",
     )
     parser.add_argument(
         "--overlong-cache",
         type=int,
-        default=2048,
+        default=1024,
         help="触发 Soft Overlong Punishment 的末尾 token 区间长度。",
     )
     parser.add_argument(
