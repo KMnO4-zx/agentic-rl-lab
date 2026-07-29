@@ -43,6 +43,7 @@
 | [第 3 篇](./03-search-r1/readme.md) | Search-R1 | 用 Qwen3.5-4B、PyTRIO 和知乎搜索 API 复现多轮搜索 RL |
 | [第 4 篇](./04-opsd/readme.md) | OPSD | 用固定的 step-0 Teacher 蒸馏 Student 自采样轨迹 |
 | [第 5 篇](./05-retool/readme.md) | ReTool | 用 Qwen3.5-4B、PyTRIO 和本地代码沙箱复现代码交织的 Agentic RL |
+| [第 6 篇](./06-dapo/readme.md) | DAPO | 拆解四项核心改进，并记录 Dynamic Sampling 在真实训练中的时间成本 |
 
 ## 快速启动
 
