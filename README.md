@@ -22,6 +22,11 @@
 
 </div>
 
+<p align="center">
+  💬 <strong>微信交流群：</strong>
+  <a href="https://github.com/KMnO4-zx/llm-agent-rl-lab/issues/13">点击查看群二维码</a>
+</p>
+
 ## 这个仓库是什么？
 
 这是一个偏实验记录和教程的仓库。我会用 [PyTRIO](https://pytrio.com) 复现一组和 LLM / Agent RL 相关的强化学习算法，主要做三件事：
