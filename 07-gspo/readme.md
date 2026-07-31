@@ -27,7 +27,7 @@ GSPO 的全称是 **Group Sequence Policy Optimization**，由 Qwen 团队在 20
 
 ![](./images/GSPO%20vs%20GRPO%20%C2%B7%20Sequence%20Ratio.png)
 
-> **GRPO：一条回答有 $T$ 个 ratio、$T$ 次 clipping；GSPO：一条回答只有 1 个 ratio、1 次 clipping。**
+> **GRPO：一条回答有 T 个 ratio、T 次 clipping；GSPO：一条回答只有 1 个 ratio、1 次 clipping。**
 
 | 环节 | GRPO | GSPO |
 | --- | --- | --- |
@@ -40,39 +40,48 @@ GSPO 的全称是 **Group Sequence Policy Optimization**，由 Qwen 团队在 20
 
 GRPO 对回答中的每个 token 分别计算新旧策略概率比：
 
-$$
+```math
 w_{i,t}(\theta)=
-\frac{\pi_\theta(y_{i,t}\mid x,y_{i,<t})}
-{\pi_{\theta_{\mathrm{old}}}(y_{i,t}\mid x,y_{i,<t})}.
-$$
+\frac{
+  \pi_\theta\left(y_{i,t}\mid x,y_{i,\lt t}\right)
+}{
+  \pi_{\theta_{\mathrm{old}}}\left(y_{i,t}\mid x,y_{i,\lt t}\right)
+}
+```
 
 一条包含 $T$ 个 token 的回答会产生 $T$ 个 ratio，也会做 $T$ 次 clipping 判断。
 
 GSPO 先把整条回答的 token log-ratio 求均值，再取指数：
 
-$$
+```math
 s_i(\theta)=
 \exp\left(
 \frac{1}{|y_i|}
 \sum_{t=1}^{|y_i|}
 \log
-\frac{\pi_\theta(y_{i,t}\mid x,y_{i,<t})}
-{\pi_{\theta_{\mathrm{old}}}(y_{i,t}\mid x,y_{i,<t})}
-\right).
-$$
+\frac{
+  \pi_\theta\left(y_{i,t}\mid x,y_{i,\lt t}\right)
+}{
+  \pi_{\theta_{\mathrm{old}}}\left(y_{i,t}\mid x,y_{i,\lt t}\right)
+}
+\right)
+```
 
 这里的 $1/|y_i|$ 是长度归一化。它让不同长度回答的 ratio 落在相近的数值范围内。随后，整条回答共享同一个 ratio 和 clipping 结果：
 
-$$
+```math
 \mathcal{J}_{\mathrm{GSPO}}(\theta)
 =
 \frac{1}{G}\sum_{i=1}^{G}
 \min\left(
-s_i\hat A_i,\,
-\mathrm{clip}(s_i,1-\varepsilon_{\mathrm{low}},1+\varepsilon_{\mathrm{high}})
-\hat A_i
-\right).
-$$
+s_i\hat{A}_i,\,
+\operatorname{clip}\left(
+  s_i,\,
+  1-\varepsilon_{\mathrm{low}},\,
+  1+\varepsilon_{\mathrm{high}}
+\right)\hat{A}_i
+\right)
+```
 
 论文给出的 GSPO 裁剪范围是：
 
@@ -87,11 +96,14 @@ epsilon_high = 4e-4
 
 本项目的数学 reward 使用 `math_verify` 判定最终答案，正确为 `1`、错误为 `0`。同组 reward 会进一步标准化为：
 
-$$
-\hat A_i =
-\frac{r_i-\mathrm{mean}(r)}
-{\mathrm{std}(r)+10^{-8}}.
-$$
+```math
+\hat{A}_i =
+\frac{
+  r_i-\operatorname{mean}(r)
+}{
+  \operatorname{std}(r)+10^{-8}
+}
+```
 
 组内全对或全错时，所有 advantage 都是 0。本文按 GSPO 的基础目标实现，没有再叠加 Dynamic Sampling，也不会补采新题；训练侧跳过这些没有梯度的序列，同时把它们的零目标保留在原始 loss 分母中。
 
