@@ -75,7 +75,7 @@ s_i(\theta)=
 \frac{1}{G}\sum_{i=1}^{G}
 \min\left(
 s_i\hat{A}_i,\,
-\operatorname{clip}\left(
+\mathrm{clip}\left(
   s_i,\,
   1-\varepsilon_{\mathrm{low}},\,
   1+\varepsilon_{\mathrm{high}}
@@ -99,9 +99,9 @@ epsilon_high = 4e-4
 ```math
 \hat{A}_i =
 \frac{
-  r_i-\operatorname{mean}(r)
+  r_i-\mathrm{mean}(r)
 }{
-  \operatorname{std}(r)+10^{-8}
+  \mathrm{std}(r)+10^{-8}
 }
 ```
 
