@@ -10,7 +10,8 @@
 
 > **代码与复现资源**
 >
-> - 本文完整代码：[KMnO4-zx/llm-agent-rl-lab/07-gspo](https://github.com/KMnO4-zx/llm-agent-rl-lab/tree/main/07-gspo)
+> - 本文完整代码：[KMnO4-zx/llm-agent-rl-lab/07-gspo](https://github.com/KMnO4-zx/llm-agent-rl-lab/tree/main/07-gspo)  
+> - 🚀 想直接运行代码？[快速跳转到「如何启动训练」](#如何启动训练)
 > - GSPO 论文：[Group Sequence Policy Optimization](https://arxiv.org/abs/2507.18071)
 > - SwanLab：[100-step 完整训练记录](https://swanlab.cn/@kmno4/llm-agent-rl-lab-gspo/runs/o83z2ghp/chart)
 > - PyTRIO 文档：[https://docs.pytrio.com/docs](https://docs.pytrio.com/docs)
@@ -21,7 +22,6 @@
 
 这次我用 [PyTRIO](https://pytrio.com/) 在 `Qwen/Qwen3.5-4B` 上完成了 100 steps LoRA 训练，并评测 Base Model 与 Step 20、40、60、80、100 五个 checkpoint。先来看算法，再看结果。
 
-> 🚀 想直接运行代码？[快速跳转到「如何启动训练」](#如何启动训练)
 
 ## GSPO 是什么？
 
