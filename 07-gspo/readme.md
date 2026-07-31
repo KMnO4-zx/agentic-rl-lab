@@ -21,6 +21,8 @@
 
 这次我用 [PyTRIO](https://pytrio.com/) 在 `Qwen/Qwen3.5-4B` 上完成了 100 steps LoRA 训练，并评测 Base Model 与 Step 20、40、60、80、100 五个 checkpoint。先来看算法，再看结果。
 
+> 🚀 想直接运行代码？[快速跳转到「如何启动训练」](#如何启动训练)
+
 ## GSPO 是什么？
 
 GSPO 的全称是 **Group Sequence Policy Optimization**，由 Qwen 团队在 2025 年提出。它对同一道题采样一组回答，用组内 reward 的相对高低计算 advantage，从而省掉单独的 value model。GSPO 保留了这套 group-relative advantage，核心变化落在 loss：
