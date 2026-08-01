@@ -4,6 +4,7 @@ version = "0.1.0"
 requires-python = ">=3.13"
 dependencies = [
     "datasets>=5.0.0",
+    "deepseek-search",
     "math-verify>=0.9.0",
     "matplotlib>=3.11.0",
     "modelscope>=1.38.1",
@@ -19,6 +20,7 @@ dependencies = [
 [tool.uv.sources]
 # 本项目本地只做数据与张量处理；训练和采样由远程 PyTRIO 服务执行。
 torch = { index = "pytorch-cpu" }
+deepseek-search = { git = "https://github.com/KMnO4-zx/deepseek-search.git", rev = "6215c8dbb7347f94e9dcea6e741df5918449d6c4" }
 
 [[tool.uv.index]]
 name = "pytorch-cpu"

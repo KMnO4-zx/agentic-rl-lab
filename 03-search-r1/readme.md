@@ -13,9 +13,11 @@
 > - 本文完整代码：[KMnO4-zx/llm-agent-rl-lab/03-search-r1](https://github.com/KMnO4-zx/llm-agent-rl-lab/tree/main/03-search-r1)
 > - Search-R1 论文：[Search-R1: Training LLMs to Reason and Leverage Search Engines with Reinforcement Learning](https://arxiv.org/abs/2503.09516)
 > - Search-R1 官方实现：[PeterGriffinJin/Search-R1](https://github.com/PeterGriffinJin/Search-R1)
+> - DeepSeek Search 工具：[KMnO4-zx/deepseek-search](https://github.com/KMnO4-zx/deepseek-search)
 > - 知乎搜索 API Key 申请：[知乎数据开放平台](https://developer.zhihu.com/)
 > - PyTRIO 官网：[https://pytrio.com/](https://pytrio.com/)
-> - SwanLab 实验记录：[https://swanlab.cn/@kmno4/llm-agent-rl-lab-search-r1/runs/iy76hn51/chart](https://swanlab.cn/@kmno4/llm-agent-rl-lab-search-r1/runs/iy76hn51/chart)
+> - SwanLab · 知乎搜索实验：[200-step 训练记录](https://swanlab.cn/@kmno4/llm-agent-rl-lab-search-r1/runs/iy76hn51/chart)
+> - SwanLab · DeepSeek Search 实验：[20-step 训练记录](https://swanlab.cn/@kmno4/llm-agent-rl-lab-search-r1/runs/06e4gw6a)
 > - PyTRIO Skill：[SwanHubX/pytrio-skill](https://github.com/SwanHubX/pytrio-skill)
 
 这是“接下来我将复现 10 篇强化学习算法”系列的第三篇。
@@ -28,9 +30,11 @@
 
 这一次终于轮到我一直很想做的 Agentic RL：让模型在回答问题的过程中，自己决定什么时候搜索、搜索什么、看到搜索结果后要不要继续搜，最后再给出答案。
 
+> **更新：现在支持两种搜索后端。** 通过 `--search-backend deepseek` 可以使用更稳定、支持并发的 DeepSeek Search；通过 `--search-backend zhihu` 可以继续使用免费的知乎搜索。rollout、reward、advantage 和 loss 代码完全共用。
+
 先说最让我开心的一件事：这个实验很便宜，少喝一杯奶茶就行了。
 
-我这次截图里的完整训练会话（第一个是 Evaluation，第二个是 Training），PyTRIO 一共花了 `13.30` 元。北京一杯喜茶大概 `17.5～20.5` 元，所以标题并没有夸张，我确实用不到一杯喜茶的钱，完成了一次真正的 Search-R1 训练。
+下面截图对应最初使用知乎搜索的完整训练会话（第一个是 Evaluation，第二个是 Training），PyTRIO 一共花了 `13.30` 元。知乎搜索没有额外费用。北京一杯喜茶大概 `17.5～20.5` 元，所以标题并没有夸张，我确实用不到一杯喜茶的钱，完成了一次真正的 Search-R1 训练。
 
 ![](./images/pytrio-consume.png)
 
@@ -58,7 +62,19 @@ RL Step 50:  Macro EM 45.71% · Format 94.29%
 
 **Macro EM** 会先分别计算 7 个 benchmark 的 EM，再对 7 项结果做等权平均，避免题量更大的数据集主导总分。本文的固定评测集中，每个 benchmark 都有 10 道题，因此这里的 Macro EM 也等于全部 70 道题的整体正确率。
 
-这篇 Blog 想做的事情很简单：不要求你准备一台 8 卡机器，不要求你先研究几个月 veRL，也不要求你下载一个解压后 160 GB 的检索数据库。我们只保留 Search-R1 最重要的算法结构，用 Qwen3.5-4B、PyTRIO 和一个免费的在线搜索 API（感谢知乎），把完整训练闭环跑起来。
+后来我又在同一套固定 70 题上，用 DeepSeek Search 分别评测 Base Model 和 20-step checkpoint。两次评测使用完全相同的搜索后端、并发、超时和模型配置：
+
+![](./images/deepseek_checkpoint_em_format.png)
+
+| DeepSeek Search | Macro EM | Format | 搜索成功率 |
+| --- | ---: | ---: | ---: |
+| Base Model | 44.29% | 88.57% | 100% |
+| RL Step 20 | 50.00% | 97.14% | 100% |
+| **变化** | **+5.71 pp** | **+8.57 pp** | — |
+
+这组结果说明，在搜索环境保持稳定的条件下，20-step checkpoint 的回答正确率和格式率都出现了提升。当前只有一次训练和 70 道题，后文会继续说明它能支持哪些结论、还不能支持哪些结论。
+
+这篇 Blog 的目标很简单：让普通开发者直接关注 Search-R1 最重要的算法结构。我们用 Qwen3.5-4B、PyTRIO 和可切换的在线搜索服务，把原本沉重的检索与训练基础设施压缩成一套可以直接运行的完整训练闭环。
 
 ## Search-R1 是从哪里来的？
 
@@ -105,7 +121,7 @@ Antoine de Saint-Exupéry birthplace country
 
 论文里最核心的变化可以概括成一句话：
 
-> 模型不再把搜索当成回答前的固定步骤，要把它变成模型在整条推理轨迹中可以反复选择的动作。
+> 搜索从回答前的固定步骤，变成了模型在整条推理轨迹中可以反复选择的动作。
 
 ## 用人话解释 Search-R1
 
@@ -137,7 +153,7 @@ Search-R1 则是把搜索框交给学生：他可以先想一会儿，输入一�
 
 原版 Search-R1 建立在 veRL 上，官方 Quick Start 默认下载 Wikipedia corpus 和 E5 索引，再单独启动一个本地 retriever server。
 
-我最开始也想照着原版做。但把数据库下载并解压后，体积大约 160 GB；如果希望检索服务在训练期间流畅运行，服务器还需要大约 180 GB 内存。对于严谨复刻论文环境来说，这些资源当然有意义，但对于第一次学习 Search-R1 的人，它们反而会把注意力从算法本身移开。
+我最开始也想照着原版做。但把数据库下载并解压后，体积大约 160 GB；如果希望检索服务在训练期间流畅运行，服务器还需要大约 180 GB 内存。对于严谨复刻论文环境来说，这些资源当然有意义；第一次学习 Search-R1 时，这套基础设施也很容易分散我们对算法本身的注意力。
 
 很多人还没来得及深入 reward、advantage 或 loss mask 等关键算法部分，就先卡在了一系列与算法无关的工程问题上：
 
@@ -149,13 +165,14 @@ retriever server 为什么 OOM？
 训练卡和检索卡应该怎么分？
 ```
 
-这些问题都是真实的工程问题，但它们并不会帮助我们更快理解 Search-R1 的核心算法。
+这些问题都是真实的工程问题，与 reward、advantage 和 loss mask 等核心算法还有一段距离。
 
-所以我做了一个替换：
+所以我把本地 retriever 换成了一个可切换的在线搜索环境：
 
 ```text
 原论文：本地 Wikipedia corpus + E5 retriever
-本文：  知乎全局搜索 API
+本文：  DeepSeek Search Evidence 模式（默认）
+        或知乎全局搜索 API
 ```
 
 Search-R1 官方代码本身也支持把本地检索器替换成在线搜索引擎，因为算法只要求存在这样一个接口：
@@ -166,6 +183,19 @@ search(query) → observations
 
 只要模型仍然需要自己生成 query、读取 observation、继续推理并获得最终 reward，Search-R1 的核心训练闭环就没有改变。
 
+DeepSeek Search 来自我单独维护的 [`deepseek-search`](https://github.com/KMnO4-zx/deepseek-search) 项目。训练代码调用受约束的 `Evidence` 模式，在服务端搜索完成后只接收编号证据，不读取模型生成的答案总结。这样可以避免搜索工具直接替 Agent 回答问题，模型仍然需要自己判断证据是否充分、是否继续搜索，以及最终应该输出什么答案。
+
+![](./images/deepseek-search.png)
+
+两个后端共用同一个 `search(query) → observations` 接口，主要区别如下：
+
+| 搜索后端 | 返回内容 | 默认并发 | 默认超时 | 成本与稳定性 |
+| --- | --- | ---: | ---: | --- |
+| DeepSeek Search | 受约束的 Evidence 证据 | 16 | 60 秒 | 按 API 用量计费，本次实验更稳定 |
+| 知乎搜索 | Top 3 标题、正文片段、来源和 URL | 1 | 15 秒 | 免费，每个 key 有每日额度限制 |
+
+我在 DeepSeek API 后台看到，这次 20-step 训练对应的当日消费约为 `14.06` 元。实际费用会随搜索次数、输入 token 和缓存命中情况变化，因此这个数字只作为本次实验的成本记录。
+
 我们的实现配置如下：
 
 | 项目 | 本文实现 |
@@ -173,7 +203,7 @@ search(query) → observations
 | Base Model | `Qwen/Qwen3.5-4B` |
 | 训练参数 | LoRA rank 32 |
 | 训练框架 | PyTRIO |
-| 搜索环境 | 知乎全局搜索 API，Top 3 |
+| 搜索环境 | DeepSeek Search / 知乎搜索，可通过参数切换 |
 | 训练数据 | NQ + HotpotQA |
 | 每个 step | 8 道问题 |
 | 每道问题 | 8 条轨迹 |
@@ -186,7 +216,7 @@ search(query) → observations
 
 这次复现聚焦于**核心算法**，不追求逐项复刻原论文的基础设施和最终分数：保留问题、工具、环境交互、group-relative advantage、retrieved-token mask 和 policy update，把最重的本地检索基础设施换成更容易获得的在线搜索服务。
 
-我认为这对于学习算法更有价值。你可以先用极小的成本理解 Search-R1，等真正需要追求论文指标时，再把 `search(query)` 换回本地 Wikipedia retriever。
+我认为这对于学习算法更有价值。预算优先时可以选择知乎搜索，希望训练环境更加稳定时可以选择 DeepSeek Search。等真正需要追求论文指标时，再把 `search(query)` 换回本地 Wikipedia retriever。
 
 ## 为什么我觉得 PyTRIO 很适合 Agentic RL？
 
@@ -202,7 +232,7 @@ Agentic RL 又比普通数学 RL 更麻烦。一次 rollout 里面不只有模�
 
 这里最关键的区别是**计费单位**。租 GPU 机器通常按占用时间收费：从任务启动到任务结束，8 张卡无论在训练、等待搜索，还是等待最慢的 rollout，整段 wall-clock time 都要付费。Agentic RL 的工具调用和轨迹长度又很不稳定，GPU 空转很容易成为一笔真实成本。
 
-PyTRIO 的训练侧按实际处理的训练 Token 计费。模型等待知乎搜索 API、本地 Python 执行工具、训练侧等待长尾 rollout 的这段时间都不会产生训练 Token，因此也不会继续累积训练费用。算力本身依然有成本，但我们无需为搜索和调度造成的 GPU 空转买单，这种计费方式天然适合 Search-R1 一类“环境交互时间长、有效训练时间短”的 Agentic RL 任务。
+PyTRIO 的训练侧按实际处理的训练 Token 计费。模型等待搜索 API、本地 Python 执行工具、训练侧等待长尾 rollout 的这段时间都不会产生训练 Token，因此也不会继续累积训练费用。算力本身依然有成本，但我们无需为搜索和调度造成的 GPU 空转买单，这种计费方式天然适合 Search-R1 一类“环境交互时间长、有效训练时间短”的 Agentic RL 任务。
 
 PyTRIO 把这个分工拆得很舒服：
 
@@ -224,13 +254,13 @@ training_client.optim_step(adam_params).result()
 
 完整训练循环在 [`train.py`](https://github.com/KMnO4-zx/llm-agent-rl-lab/blob/main/03-search-r1/train.py)。
 
-我不需要持有一台 8 卡机器，也不需要把 rollout 和 trainer 塞进同一个集群。对这类“生成很慢、工具调用很多、真正 backward 时间反而不长”的任务，按实际训练 Token 使用远端训练服务会自然很多。
+这样一来，我可以直接使用远端训练服务，也可以让 rollout 和 trainer 保持清晰分工。对这类“生成和工具调用耗时较长、backward 时间相对较短”的任务，按实际训练 Token 使用远端训练服务会自然很多。
 
 这也是我觉得 PyTRIO 很像一种属于未来的模型训练基础设施的原因：研究者写的是算法和实验，底层训练服务更像随用随取的算力 API。
 
 ## 先看实验结果
 
-我们使用固定的 70 道题做开发评测：7 个 benchmark，每个 benchmark 固定抽取 10 道题。完整结果如下：
+我们使用固定的 70 道题做开发评测：7 个 benchmark，每个 benchmark 固定抽取 10 道题。先看使用知乎搜索完成的 200-step 主实验：
 
 ![](./images/checkpoint_em_format.png)
 
@@ -244,7 +274,7 @@ training_client.optim_step(adam_params).result()
 | RL Step 150 | 38.57% | 100% | 40% | 70% | 30% | 20% | 20% | 30% | 60% |
 | RL Step 200 | 40.00% | 100% | 40% | 70% | 40% | 10% | 30% | 30% | 60% |
 
-### 20 step 已经能够看到效果
+### 知乎搜索：20 step 已经能够看到效果
 
 如果你的目标是理解和验证算法，不需要一上来就跑 200 step。
 
@@ -265,7 +295,7 @@ Answer: <short answer>
 
 Step 20 来自一条早期小规模 run，实时搜索条件与主实验不完全相同，所以不能把这几个百分点当成严格的论文级提升。但它已经足够完成教学目标：确认真实 rollout、reward、group advantage 和参数更新确实改变了模型行为。
 
-### Step 50 是当前可靠窗口里的最好结果
+### 知乎搜索：Step 50 是当前可靠窗口里的最好结果
 
 主实验里，Step 50 的 Macro EM 达到 `45.71%`，即固定 70 题中答对 32 题；Format Rate 达到 `94.29%`。
 
@@ -277,7 +307,7 @@ Step 20 来自一条早期小规模 run，实时搜索条件与主实验不完�
 
 这张图只展示一条真实轨迹，不能替代整体评测，但它把模型到底学到了什么表现得很直观：模型从单纯生成更长的文字，变得更像一个知道什么时候查、什么时候停的搜索 Agent。
 
-### 50 step 之后发生了什么？
+### 知乎搜索：50 step 之后发生了什么？
 
 如果只看 reward 曲线，很容易得到一个结论：模型在中后期退化了。
 
@@ -298,7 +328,7 @@ reward/correct 和 reward/mean 在搜索环境恶化后下降
 
 Format reward 不依赖搜索结果。只要模型最后正确输出一行 `Answer:`，这个信号就能被稳定计算，所以模型确实学会了格式。
 
-Correctness reward 则依赖工具环境。API 失败以后，即使模型生成了一条合理 query，也可能拿不到正确证据；这时 reward 的差异就不再只反映策略好坏，还混入了搜索服务的运气。
+Correctness reward 则依赖工具环境。API 失败以后，即使模型生成了一条合理 query，也可能拿不到正确证据；这时 reward 会同时受到策略质量和搜索服务状态的影响。
 
 对于 group-relative RL，这个问题会被进一步放大：
 
@@ -307,6 +337,36 @@ Correctness reward 则依赖工具环境。API 失败以后，即使模型生成
 - 如果一整组都因为环境失败得到相同 reward，advantage 全部变成 0，这道题不会提供有效梯度。
 
 因此，这次实验后半段的下降不能简单解释成“Search-R1 算法失效”或“代码写错了”。前 50 step 的 EM 变化，以及不依赖搜索 API 的 Format 学习，共同说明核心训练链路已经工作。现在真正缺少的是一个能够长期稳定调用的搜索环境。
+
+### DeepSeek Search：稳定环境下的 20-step 补充实验
+
+知乎主实验让我意识到，搜索环境的稳定性会直接影响 reward。于是我又使用 DeepSeek Search 跑了 20 个 step，并让 Base Model 和 Step 20 checkpoint 在同一个搜索环境下完成固定 70 题评测。
+
+各 benchmark 的结果如下：
+
+| 模型 / Checkpoint | Macro EM | Format | 2Wiki | Bamboogle | HotpotQA | MuSiQue | NQ | PopQA | TriviaQA |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Qwen3.5-4B | 44.29% | 88.57% | 50% | 70% | 60% | 20% | 40% | 20% | 50% |
+| **RL Step 20** | **50.00%** | **97.14%** | **60%** | 70% | **70%** | **30%** | 40% | **30%** | 50% |
+
+这 20 个 step 带来了两项可以直接核对的变化：
+
+```text
+Macro EM: 44.29% → 50.00%（+5.71 pp，70 题中净增 4 题）
+Format:   88.57% → 97.14%（+8.57 pp）
+```
+
+两次评测的 `search/success_rate` 都是 `100%`，`search/error_rate`、`search/429_rate` 和 `search/timeout_rate` 都是 `0`。因此，这组 Base 与 Step 20 的差异没有混入搜索失败或额度耗尽的问题。
+
+训练曲线里，红线是 DeepSeek Search 的 20-step run，绿线是原来的知乎搜索主实验：
+
+![](./images/deepseek-reward.png)
+
+红线在早期表现出更高的 correctness reward 和 format reward。不过两条训练曲线使用了不同的实时搜索环境，也拥有不同的训练长度，因此曲线高度只作为行为观察。上面的 Base / Step 20 固定评测才是这次更可控的对比。
+
+DeepSeek run 里的 degenerate group 比例也更高。这个指标只表示同一道题的 8 条轨迹拿到了完全相同的 reward，里面既可能有全对组，也可能有全错组。结合更高的 correctness reward，可以合理推测其中包含了更多全对组，但当前日志还不能把两类情况分别统计出来。继续提高 `group_size` 可以降低拿不到相对 advantage 的概率，同时也会近似线性增加 rollout 和搜索成本。
+
+这组 20-step 结果证明了稳定搜索环境下的早期优化信号，也给出了更可靠的复现入口。它仍然是一条训练 run 和 70 道开发题，距离多随机种子、大评测集的正式结论还有一段距离。
 
 ## Search-R1 的训练闭环详细拆解
 
@@ -319,12 +379,12 @@ Correctness reward 则依赖工具环境。API 失败以后，即使模型生成
 ├── prepare_data.py   # 下载并整理训练与评测数据
 ├── data.py           # 读取本地 JSONL
 ├── protocol.py       # search tool schema、prompt 和 tool-call 解析
-├── search.py         # 知乎搜索客户端
+├── search.py         # DeepSeek / 知乎双搜索后端
 ├── rollout.py        # 多轮工具调用状态机
 ├── reward.py         # EM + Format reward
 ├── train.py          # PyTRIO Search-R1 训练循环
 ├── eval.py           # Base / checkpoint 统一评测
-└── analyse.py        # 绘制 checkpoint 结果图
+└── analyse.py        # 绘制知乎与 DeepSeek checkpoint 结果图
 ```
 
 ## 第一步：准备问题和答案
@@ -369,11 +429,14 @@ SEARCH_TOOL = {
     "type": "function",
     "function": {
         "name": "search",
-        "description": "Search Zhihu for evidence. Use a concise English query.",
+        "description": "Search the web for evidence. Use a concise English query.",
         "parameters": {
             "type": "object",
             "properties": {
-                "query": {"type": "string"},
+                "query": {
+                    "type": "string",
+                    "description": "A concise English search query.",
+                },
             },
             "required": ["query"],
         },
@@ -395,7 +458,20 @@ prompt_tokens = tokenizer.apply_chat_template(
 
 这里无需靠 stop word 猜模型是否想搜索。模型会生成结构化的 `<tool_call>`，`protocol.py` 再把它解析成 query；环境执行真实搜索后，以 `role="tool"` 把 observation 写回对话。
 
-知乎搜索实现位于 [`search.py`](https://github.com/KMnO4-zx/llm-agent-rl-lab/blob/main/03-search-r1/search.py)。它会轮转多个 key，记录成功率、错误率、429 和延迟，每次只把 Top 3 的标题、内容片段、来源和 URL 返回给模型。
+两个搜索后端都实现在 [`search.py`](https://github.com/KMnO4-zx/llm-agent-rl-lab/blob/main/03-search-r1/search.py)，训练和评测通过同一个工厂函数创建客户端：
+
+```python
+search_client = create_search_client(
+    args.search_backend,
+    Path(__file__).resolve().parent / ".env",
+    model=args.search_model,
+    timeout=args.search_timeout,
+)
+```
+
+`DeepSeekSearchClient` 调用 `mode="evidence"`，把编号 Evidence 解析成统一的 `SearchItem`；`ZhihuSearchClient` 会轮转多个 key，并保留 Top 3 的标题、正文片段、来源和 URL。它们最终都返回相同的 `SearchResult`，所以后面的多轮状态机完全不知道当前使用的是哪一家搜索服务。
+
+两个客户端都会记录成功率、错误率、429 和延迟。DeepSeek 后端还会额外记录搜索请求数、返回证据数、输入 token、缓存命中 token 和输出 token，方便把环境质量与 API 成本一起观察。
 
 ## 第三步：让一组轨迹在搜索后真正分叉
 
@@ -641,25 +717,37 @@ uv run python 03-search-r1/prepare_data.py
 └── test.jsonl     # 完整评测池
 ```
 
-### 3. 配置搜索 Key
+### 3. 选择并配置搜索后端
 
-打开[知乎数据开放平台](https://developer.zhihu.com/)，登录后点击页面右上角的「个人中心」，按照页面提示申请搜索 API Key。当前页面提供「注册免费获取 1000 次/天调用」的入口，实际额度以平台页面为准。
-
-![](./images/zhihu-search.png)
-
-申请完成后，复制环境变量模板：
+先复制环境变量模板：
 
 ```bash
 cp 03-search-r1/.env.example 03-search-r1/.env
 ```
 
-在 `.env` 中填写：
+推荐使用默认的 DeepSeek Search。可以直接登录：
+
+```bash
+uv run deepseek-search login
+```
+
+也可以在 `03-search-r1/.env` 中填写 API Key：
+
+```dotenv
+DEEPSEEK_API_KEY=your_deepseek_api_key
+```
+
+如果希望使用免费的知乎搜索，可以打开[知乎数据开放平台](https://developer.zhihu.com/)，登录后进入「个人中心」申请搜索 API Key。当前页面提供「注册免费获取 1000 次/天调用」的入口，实际额度以平台页面为准。
+
+![](./images/zhihu-search.png)
+
+然后在同一个 `.env` 中填写：
 
 ```dotenv
 ZHIHU_SEARCH_KEYS=your_first_key,your_second_key,your_third_key
 ```
 
-建议准备三个有足够剩余额度的 key。搜索服务是 RL 环境的重要组成部分。开始正式训练前，一定要确认 `search/success_rate` 正常。
+知乎后端建议准备三个有足够剩余额度的 key。无论选择哪一个后端，开始正式训练前都要确认 `search/success_rate` 正常。
 
 ### 4. 运行 20-step 小规模训练
 
@@ -669,7 +757,7 @@ ZHIHU_SEARCH_KEYS=your_first_key,your_second_key,your_third_key
 cd 03-search-r1
 ```
 
-然后执行：
+使用 DeepSeek Search：
 
 ```bash
 uv run python train.py \
@@ -677,8 +765,27 @@ uv run python train.py \
     --questions-per-batch 8 \
     --group-size 8 \
     --save-every 5 \
+    --base-model Qwen/Qwen3.5-4B \
+    --search-backend deepseek \
+    --run-name search-r1-qwen35-4b-deepseek \
     --swanlab-mode online
 ```
+
+使用知乎搜索：
+
+```bash
+uv run python train.py \
+    --max-steps 20 \
+    --questions-per-batch 8 \
+    --group-size 8 \
+    --save-every 5 \
+    --base-model Qwen/Qwen3.5-4B \
+    --search-backend zhihu \
+    --run-name search-r1-qwen35-4b-zhihu \
+    --swanlab-mode online
+```
+
+DeepSeek 默认使用 `16` 个搜索并发和 `60` 秒超时；知乎默认使用 `1` 个搜索并发和 `15` 秒超时。需要调整时可以传入 `--search-concurrency` 和 `--search-timeout`。正式训练可以把 `--max-steps` 改为 `100`，并把 `--save-every` 改为 `50`。
 
 这 20 个 step 每步使用 8 道问题，每道问题采样 8 条真实多轮工具轨迹。每 5 step 会保存一次：
 
@@ -698,12 +805,17 @@ uv run python train.py \
 
 ### 5. 评测 Base Model 和 Step 20
 
-先评测 Base Model：
+下面以 DeepSeek Search 为例。先评测 Base Model：
 
 ```bash
 uv run python eval.py \
     --batch-size 16 \
-    --output eval_result/eval_results.jsonl
+    --base-model Qwen/Qwen3.5-4B \
+    --search-backend deepseek \
+    --search-model deepseek-v4-flash \
+    --search-concurrency 16 \
+    --search-timeout 60 \
+    --output eval_result/eval_results_base_deepseek_search.jsonl
 ```
 
 训练结束时终端会打印 Step 20 sampler weights 路径。把它传给 evaluator：
@@ -712,22 +824,34 @@ uv run python eval.py \
 uv run python eval.py \
     --batch-size 16 \
     --model-path 'trio://YOUR_STEP_20_SAMPLER_WEIGHTS' \
-    --output eval_result/eval_results_rl_step_20.jsonl
+    --search-backend deepseek \
+    --search-model deepseek-v4-flash \
+    --search-concurrency 16 \
+    --search-timeout 60 \
+    --output eval_result/eval_results_rl_step_20_deepseek_search.jsonl
 ```
 
-如果搜索额度有限，可以先用 `--limit 20` 检查整条链路，再决定是否运行固定 70 题评测。
+使用知乎后端时，两次评测都改成 `--search-backend zhihu`，输出文件分别使用 `eval_results.jsonl` 和 `eval_results_rl_step_20.jsonl`。Base 和 checkpoint 必须使用同一个搜索后端与同一组搜索配置，跨后端的绝对分数不能直接比较。
+
+如果只想先检查整条链路，可以添加 `--limit 20`，再决定是否运行固定 70 题评测。
 
 评测代码在 [`eval.py`](https://github.com/KMnO4-zx/llm-agent-rl-lab/blob/main/03-search-r1/eval.py)。它对 Base 和 checkpoint 使用相同的 tokenizer、工具协议、搜索环境、轨迹限制和 EM 规则。
 
-### 6. 绘制完整 checkpoint 结果
+### 6. 绘制评测结果
 
-如果已经准备好 Base、Step 20、50、100、150 和 200 的评测 JSONL，可以运行：
+绘制原来的知乎 Base、Step 20、50、100、150 和 200 checkpoint：
 
 ```bash
 uv run python analyse.py
 ```
 
-绘图代码在 [`analyse.py`](https://github.com/KMnO4-zx/llm-agent-rl-lab/blob/main/03-search-r1/analyse.py)，它会直接读取每个 JSONL 末尾的 `summary.metrics`，生成本文使用的 Macro EM 与 Format 图。
+绘制 DeepSeek Search 的 Base 与 Step 20 对比：
+
+```bash
+uv run python analyse.py --preset deepseek
+```
+
+绘图代码在 [`analyse.py`](https://github.com/KMnO4-zx/llm-agent-rl-lab/blob/main/03-search-r1/analyse.py)，它会直接读取每个 JSONL 末尾的 `summary.metrics`。DeepSeek preset 还会检查两份结果是否都来自固定 70 题、相同后端和相同搜索配置，避免把不一致的实验画到同一张图里。
 
 ## 训练时最应该看哪些指标？
 
@@ -745,6 +869,8 @@ Search-R1 不能只看一个 reward 曲线。
 | `search/success_rate` | 模型拿到的工具环境是否可靠？ |
 | `search/error_rate` | reward 是否可能被外部错误污染？ |
 | `search/latency` | 工具调用是否成为 rollout 瓶颈？ |
+| `search/results` | 每次搜索平均返回多少条证据？ |
+| `search/input_tokens` / `search/output_tokens` | DeepSeek Search 的 API 用量如何？ |
 
 如果 `reward/correct` 下跌，同时 `search/error_rate` 上升，不能立刻得出模型退化的结论。先确认环境，再解释策略。
 
@@ -756,11 +882,13 @@ Search-R1 不能只看一个 reward 曲线。
 
 第二，当前评测只有固定 70 道题，每个 benchmark 10 道，适合检查行为变化和发现实现问题，但不能替代更大规模、多随机种子的正式实验。
 
-第三，三个搜索 key 在主实验中陆续触发额度限制。我们把至少前 50 step 视为当前可信训练窗口，后续 checkpoint 只作为现象记录，不用它们证明过度训练或策略塌缩。
+第三，知乎主实验的三个搜索 key 在训练中陆续触发额度限制。我们把至少前 50 step 视为这条 run 的可信训练窗口，后续 checkpoint 只作为现象记录，不用它们证明过度训练或策略塌缩。
 
-第四，Format Rate 上升能够验证 reward、advantage、loss mask 和 policy update 链路确实工作，因为这个信号不依赖搜索 API；但更强的多跳正确性结论仍然需要稳定搜索环境和更大评测集。
+第四，DeepSeek Search 的 Base 与 Step 20 评测保持了相同的后端、模型和搜索参数，两次搜索成功率都是 100%。这让 `+5.71 pp` Macro EM 和 `+8.57 pp` Format 成为更可靠的早期信号，但一条 run 仍然不足以给出稳定泛化结论。
 
-这些边界并不影响本文最重要的目标：让大家用很小的存储、算力和金钱成本，真正把 Search-R1 从代码跑起来，并理解每一部分为什么存在。
+第五，知乎与 DeepSeek Search 返回的证据范围不同，因此两个后端下的 Base Model 绝对分数不能横向比较。本文只在各自相同的搜索环境内比较 checkpoint。
+
+在这些边界内，本文仍然完成了最重要的目标：让大家用很小的存储、算力和金钱成本，真正把 Search-R1 从代码跑起来，并理解每一部分为什么存在。
 
 ## 小结
 
@@ -776,11 +904,11 @@ Search-R1 看起来像一个复杂的 Agent 训练系统，但拆开以后，它
 7. 导出新 sampler，继续下一轮 rollout。
 ```
 
-它真正训练的是如何主动从环境里获取知识，重点并不在于“记住更多知识”。
+它把优化目标放在了主动从环境里获取知识的能力上。
 
-原论文的 160 GB 检索数据库和约 180 GB 内存需求，对于严格复刻论文当然有价值；但如果只是想理解算法，先承担这套基础设施并不划算。本文用知乎搜索替代本地检索器，把进入 Search-R1 的门槛降到了普通开发者能够接受的程度。
+原论文的 160 GB 检索数据库和约 180 GB 内存需求，对于严格复刻论文当然有价值；在学习算法的阶段，先承担这套基础设施会带来很高的成本。本文用可切换的在线搜索服务替代本地检索器，把进入 Search-R1 的门槛降到了普通开发者能够接受的程度。
 
-你不需要训练几百 step。准备稳定的搜索 key，运行 20 step，就已经能够看到 Format Rate 和模型行为发生变化。我们这次的完整训练账单是 `13.30` 元，比一杯喜茶还便宜。
+你不需要训练几百 step。运行 20 step，就已经能够看到 Format Rate 和模型行为发生变化。预算优先时可以使用免费的知乎搜索；希望环境稳定、并发更高时可以使用 DeepSeek Search。这次知乎版本的 PyTRIO 训练账单是 `13.30` 元，DeepSeek 20-step 实验的搜索 API 后台消费约为 `14.06` 元。
 
 对我来说，这也是 PyTRIO 最吸引人的地方：我终于可以把时间集中在 reward、rollout、loss mask 和实验设计上，省去维护庞大训推集群的前置负担。
 
@@ -800,7 +928,8 @@ Search-R1 看起来像一个复杂的 Agent 训练系统，但拆开以后，它
 
 1. [PeterJinGo/nq_hotpotqa_train](https://huggingface.co/datasets/PeterJinGo/nq_hotpotqa_train)
 2. [Qwen/Qwen3.5-4B](https://huggingface.co/Qwen/Qwen3.5-4B)
-3. [知乎全局搜索 API](https://developer.zhihu.com/docs?key=global_search)
+3. [KMnO4-zx/deepseek-search](https://github.com/KMnO4-zx/deepseek-search)
+4. [知乎全局搜索 API](https://developer.zhihu.com/docs?key=global_search)
 
 ### 本文实现
 

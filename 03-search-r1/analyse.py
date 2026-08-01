@@ -1,12 +1,15 @@
-"""Plot Macro EM and format rate across Search-R1 checkpoints.
+"""Plot Macro EM and format rate for Search-R1 evaluations.
 
 Run from the repository root:
 
     uv run python 03-search-r1/analyse.py
+    uv run python 03-search-r1/analyse.py --preset deepseek
 
-The figure is written to ``03-search-r1/eval_result/checkpoint_em_format.png``
-by default. Each metric is read from the final ``type=summary`` record of the
-corresponding evaluation JSONL file.
+The Zhihu checkpoint figure is written to
+``03-search-r1/eval_result/checkpoint_em_format.png`` by default. The DeepSeek
+Base-vs-Step-20 figure is written to
+``03-search-r1/images/deepseek_checkpoint_em_format.png``. Each metric is read
+from the final ``type=summary`` record of the corresponding evaluation JSONL.
 """
 
 from __future__ import annotations
@@ -23,8 +26,9 @@ from matplotlib.ticker import PercentFormatter
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_RESULT_DIR = SCRIPT_DIR / "eval_result"
 DEFAULT_OUTPUT = DEFAULT_RESULT_DIR / "checkpoint_em_format.png"
+DEFAULT_DEEPSEEK_OUTPUT = SCRIPT_DIR / "images" / "deepseek_checkpoint_em_format.png"
 
-CHECKPOINTS = (
+ZHIHU_CHECKPOINTS = (
     ("Base", "eval_results.jsonl"),
     ("Step 20", "eval_results_rl_step_20.jsonl"),
     ("Step 50", "eval_results_rl_step_50.jsonl"),
@@ -32,10 +36,20 @@ CHECKPOINTS = (
     ("Step 150", "eval_results_rl_step_150.jsonl"),
     ("Step 200", "eval_results_rl_step_200.jsonl"),
 )
+DEEPSEEK_CHECKPOINTS = (
+    ("Base", "eval_results_base_deepseek_search.jsonl"),
+    ("Step 20", "eval_results_rl_step_20_deepseek_search.jsonl"),
+)
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--preset",
+        choices=("zhihu", "deepseek"),
+        default="zhihu",
+        help="Evaluation set to plot; the default preserves the original Zhihu figure",
+    )
     parser.add_argument(
         "--result-dir",
         type=Path,
@@ -45,8 +59,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output",
         type=Path,
-        default=DEFAULT_OUTPUT,
-        help="Output image path; the extension selects the export format",
+        default=None,
+        help="Output image path; each preset has its own default",
     )
     parser.add_argument(
         "--dpi",
@@ -81,17 +95,43 @@ def load_summary(path: Path) -> dict[str, Any]:
     return summary
 
 
-def load_metrics(result_dir: Path) -> tuple[list[str], list[float], list[float]]:
+def load_metrics(
+    result_dir: Path,
+    checkpoints: tuple[tuple[str, str], ...],
+    *,
+    expected_backend: str | None = None,
+) -> tuple[list[str], list[float], list[float]]:
     labels: list[str] = []
     macro_em: list[float] = []
     format_rate: list[float] = []
+    evaluation_sizes: set[int] = set()
+    search_configs: set[tuple[str, int, float, str]] = set()
 
-    for label, filename in CHECKPOINTS:
+    for label, filename in checkpoints:
         path = result_dir / filename
         if not path.is_file():
             raise FileNotFoundError(f"Missing evaluation result: {path}")
 
         summary = load_summary(path)
+        if expected_backend is not None:
+            backend = summary.get("search_backend")
+            if backend != expected_backend:
+                raise ValueError(
+                    f"Expected search_backend={expected_backend!r} in {path}, got {backend!r}"
+                )
+            try:
+                evaluation_sizes.add(int(summary["evaluated_examples"]))
+                search_configs.add(
+                    (
+                        str(backend),
+                        int(summary["search_concurrency"]),
+                        float(summary["search_timeout"]),
+                        str(summary["search_model"]),
+                    )
+                )
+            except (KeyError, TypeError, ValueError) as error:
+                raise ValueError(f"Search provenance is incomplete in {path}") from error
+
         metrics = summary.get("metrics")
         if not isinstance(metrics, dict):
             raise ValueError(f"Summary metrics are missing in {path}")
@@ -107,6 +147,16 @@ def load_metrics(result_dir: Path) -> tuple[list[str], list[float], list[float]]
         labels.append(label)
         macro_em.append(em_value)
         format_rate.append(format_value)
+
+    if expected_backend is not None:
+        if evaluation_sizes != {70}:
+            raise ValueError(
+                f"DeepSeek comparison requires the same fixed 70-question set, got {evaluation_sizes}"
+            )
+        if len(search_configs) != 1:
+            raise ValueError(
+                f"DeepSeek comparison requires identical search settings, got {search_configs}"
+            )
 
     return labels, macro_em, format_rate
 
@@ -261,14 +311,158 @@ def make_figure(
     return figure
 
 
+def make_deepseek_figure(
+    labels: list[str],
+    macro_em: list[float],
+    format_rate: list[float],
+) -> plt.Figure:
+    """Compare Base and Step 20 under the same DeepSeek Search environment."""
+    configure_style()
+
+    x_positions = list(range(len(labels)))
+    figure, axes = plt.subplots(
+        1,
+        2,
+        figsize=(13.0, 5.4),
+        sharey=False,
+        gridspec_kw={"wspace": 0.08},
+    )
+    panels = (
+        (axes[0], macro_em, "(a) Macro Exact Match", (0.42, 0.52)),
+        (axes[1], format_rate, "(b) Valid Answer Format Rate", (0.86, 1.00)),
+    )
+
+    for axis, values, title, y_limits in panels:
+        visible_heights = [value - y_limits[0] for value in values]
+        bars = axis.bar(
+            x_positions,
+            visible_heights,
+            bottom=y_limits[0],
+            width=0.48,
+            color=["#A9AFB8", "#3B82F6"],
+            edgecolor="#202020",
+            linewidth=1.0,
+            alpha=0.96,
+            zorder=3,
+        )
+        bars[1].set_hatch("///")
+        label_offset = (y_limits[1] - y_limits[0]) * 0.045
+        add_value_labels(axis, x_positions, values, offset=label_offset)
+        gain = values[1] - values[0]
+        axis.text(
+            0.5,
+            0.16,
+            f"{gain * 100:+.1f} pp",
+            transform=axis.transAxes,
+            ha="center",
+            va="center",
+            fontsize=10,
+            color="#2563EB",
+            fontweight="bold",
+            bbox={
+                "boxstyle": "round,pad=0.28",
+                "facecolor": "white",
+                "edgecolor": "#93C5FD",
+                "linewidth": 0.8,
+                "alpha": 0.96,
+            },
+            zorder=5,
+        )
+        axis.set_title(title, pad=14)
+        axis.set_xticks(x_positions, labels)
+        axis.set_xlabel("Model / Checkpoint", labelpad=10)
+        axis.set_ylim(*y_limits)
+        axis.yaxis.set_major_formatter(PercentFormatter(xmax=1.0, decimals=0))
+        axis.grid(
+            axis="y",
+            color="#C7C7C7",
+            linestyle="-.",
+            linewidth=0.8,
+            alpha=0.75,
+            zorder=0,
+        )
+        axis.tick_params(
+            axis="both",
+            which="major",
+            direction="in",
+            top=True,
+            right=True,
+            length=5,
+            width=0.9,
+        )
+        axis.margins(x=0.28)
+        axis.text(
+            0.02,
+            0.035,
+            "focused y-axis",
+            transform=axis.transAxes,
+            ha="left",
+            va="bottom",
+            fontsize=8,
+            color="#777777",
+            style="italic",
+        )
+
+    axes[0].set_ylabel("Score")
+    em_gain = macro_em[1] - macro_em[0]
+    format_gain = format_rate[1] - format_rate[0]
+
+    figure.suptitle(
+        "Search-R1 · DeepSeek Search Evaluation",
+        fontsize=17,
+        y=0.995,
+    )
+    figure.text(
+        0.5,
+        0.935,
+        (
+            "Fixed 70-question evaluation set · same DeepSeek Search backend · "
+            "independent focused y-axes"
+        ),
+        ha="center",
+        va="top",
+        fontsize=10,
+        color="#555555",
+    )
+    figure.text(
+        0.5,
+        0.015,
+        (
+            f"Step 20 change: Macro EM {em_gain * 100:+.1f} pp · "
+            f"valid answer format {format_gain * 100:+.1f} pp · "
+            "20 training steps · "
+            "search success 100% in both evaluations."
+        ),
+        ha="center",
+        va="bottom",
+        fontsize=9,
+        color="#555555",
+    )
+    figure.subplots_adjust(left=0.075, right=0.985, bottom=0.18, top=0.84)
+    return figure
+
+
 def main() -> None:
     args = parse_args()
-    labels, macro_em, format_rate = load_metrics(args.result_dir)
-    figure = make_figure(labels, macro_em, format_rate)
+    if args.preset == "deepseek":
+        labels, macro_em, format_rate = load_metrics(
+            args.result_dir,
+            DEEPSEEK_CHECKPOINTS,
+            expected_backend="deepseek",
+        )
+        figure = make_deepseek_figure(labels, macro_em, format_rate)
+        output = args.output or DEFAULT_DEEPSEEK_OUTPUT
+    else:
+        labels, macro_em, format_rate = load_metrics(
+            args.result_dir,
+            ZHIHU_CHECKPOINTS,
+        )
+        figure = make_figure(labels, macro_em, format_rate)
+        output = args.output or DEFAULT_OUTPUT
 
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    figure.savefig(args.output, dpi=args.dpi, bbox_inches="tight")
-    print(f"Saved figure: {args.output}")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    figure.savefig(output, dpi=args.dpi, bbox_inches="tight")
+    print(f"Saved figure: {output}")
 
     if args.show:
         plt.show()

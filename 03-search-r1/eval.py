@@ -23,7 +23,13 @@ from tqdm import tqdm
 
 from data import SearchExample, load_examples
 from rollout import RolloutConfig, Trajectory, rollout_batch
-from search import ZhihuSearchClient
+from search import (
+    SEARCH_BACKENDS,
+    SearchClient,
+    create_search_client,
+    resolve_search_concurrency,
+    resolve_search_timeout,
+)
 
 
 EVAL_DATA_PATH = Path(__file__).resolve().parent / "datasets" / "dev.jsonl"
@@ -59,7 +65,7 @@ def trajectory_record(trajectory: Trajectory) -> dict[str, Any]:
 
 
 def evaluation_metrics(
-    trajectories: list[Trajectory], search_client: ZhihuSearchClient
+    trajectories: list[Trajectory], search_client: SearchClient
 ) -> dict[str, float]:
     """计算各数据源 EM、宏平均和搜索辅助指标。"""
     by_source: dict[str, list[Trajectory]] = defaultdict(list)
@@ -98,6 +104,12 @@ def summary_record(
         "type": "summary",
         "base_model": args.base_model,
         "model_path": args.model_path,
+        "search_backend": args.search_backend,
+        "search_concurrency": args.search_concurrency,
+        "search_timeout": args.search_timeout,
+        "search_model": (
+            args.search_model if args.search_backend == "deepseek" else None
+        ),
         "evaluated_examples": len(trajectories),
         "metrics": metrics,
     }
@@ -116,7 +128,7 @@ def parse_args() -> argparse.Namespace:
         "--batch-size",
         type=int,
         default=8,
-        help="每批同时推进的评测问题数；模型采样并发，搜索调用顺序执行",
+        help="每批同时推进的评测问题数；模型采样和不同轨迹的搜索均可并发",
     )
     parser.add_argument(
         "--base-model",
@@ -138,6 +150,29 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=4,
         help="每条评测轨迹最多调用搜索工具的次数",
+    )
+    parser.add_argument(
+        "--search-backend",
+        choices=SEARCH_BACKENDS,
+        default="deepseek",
+        help="搜索后端：deepseek 更稳定但会产生 API 费用，zhihu 免费但有额度限制",
+    )
+    parser.add_argument(
+        "--search-concurrency",
+        type=int,
+        default=None,
+        help="不同轨迹之间的搜索并发；默认 deepseek=16、zhihu=1",
+    )
+    parser.add_argument(
+        "--search-model",
+        default="deepseek-v4-flash",
+        help="DeepSeek Search 使用的模型；zhihu 后端会忽略此参数",
+    )
+    parser.add_argument(
+        "--search-timeout",
+        type=float,
+        default=None,
+        help="单次搜索的超时秒数；默认 deepseek=60、zhihu=15",
     )
     parser.add_argument(
         "--max-assistant-turns",
@@ -186,6 +221,13 @@ def parse_args() -> argparse.Namespace:
 
 def main(args: argparse.Namespace) -> None:
     """在固定 70 题上运行 base 和 checkpoint 共用的 evaluator。"""
+    args.search_concurrency = resolve_search_concurrency(
+        args.search_backend, args.search_concurrency
+    )
+    args.search_timeout = resolve_search_timeout(
+        args.search_backend, args.search_timeout
+    )
+
     # 先校验磁盘上的固定评测集仍是完整 70 题，再按 limit 截取少量题做试跑。
     examples = load_examples(EVAL_DATA_PATH)
     if len(examples) != EXPECTED_EVAL_SIZE:
@@ -207,7 +249,12 @@ def main(args: argparse.Namespace) -> None:
 
     # 评测沿用训练时相同的 tokenizer、搜索客户端和多轮轨迹限制。
     tokenizer = sampling_client.get_tokenizer()
-    search_client = ZhihuSearchClient.from_env(Path(__file__).resolve().parent / ".env")
+    search_client = create_search_client(
+        args.search_backend,
+        Path(__file__).resolve().parent / ".env",
+        model=args.search_model,
+        timeout=args.search_timeout,
+    )
     config = RolloutConfig(
         # 每道题只生成一条确定的评测轨迹，不需要训练阶段的 GRPO group。
         group_size=1,
@@ -216,6 +263,7 @@ def main(args: argparse.Namespace) -> None:
         max_trajectory_tokens=args.max_trajectory_tokens,
         max_assistant_tokens=args.max_assistant_tokens,
         max_tool_response_tokens=args.max_tool_response_tokens,
+        search_concurrency=args.search_concurrency,
         temperature=args.temperature,
         top_p=args.top_p,
         seed=args.seed,

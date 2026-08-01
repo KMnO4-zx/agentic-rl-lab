@@ -1,29 +1,37 @@
-"""使用 PyTRIO 和知乎搜索训练 Qwen3.5-4B Search-R1。
+"""使用 PyTRIO 和可切换搜索后端训练 Qwen3.5-4B Search-R1。
 
-在 03-search-r1 目录下运行正式训练：
+在 03-search-r1 目录下使用 DeepSeek Search 进行正式训练：
 uv run python train.py \
     --max-steps 100 \
     --questions-per-batch 8 \
     --group-size 8 \
     --save-every 50 \
-    --swanlab-mode online \
-    --run-name search-r1-qwen35-4b
+    --base-model Qwen/Qwen3.5-4B \
+    --search-backend deepseek \
+    --run-name search-r1-qwen35-4b-deepseek-100steps \
+    --swanlab-mode online
 
-小规模训练:
+在 03-search-r1 目录下使用 DeepSeek Search 进行小规模训练：
 uv run python train.py \
     --max-steps 20 \
     --questions-per-batch 8 \
     --group-size 8 \
     --save-every 5 \
+    --base-model Qwen/Qwen3.5-4B \
+    --search-backend deepseek \
+    --run-name search-r1-qwen35-4b-deepseek \
     --swanlab-mode online
 
-小规模测试:
+使用知乎搜索进行小规模训练：
 uv run python train.py \
     --max-steps 20 \
-    --questions-per-batch 2 \
+    --questions-per-batch 8 \
     --group-size 8 \
     --save-every 5 \
-    --swanlab-mode disabled
+    --base-model Qwen/Qwen3.5-4B \
+    --search-backend zhihu \
+    --run-name search-r1-qwen35-4b-zhihu \
+    --swanlab-mode online
 """
 
 import argparse
@@ -39,7 +47,12 @@ from tqdm import tqdm
 
 from data import shuffled_examples, take_batch
 from rollout import RolloutConfig, Trajectory, rollout_batch
-from search import ZhihuSearchClient
+from search import (
+    SEARCH_BACKENDS,
+    create_search_client,
+    resolve_search_concurrency,
+    resolve_search_timeout,
+)
 
 
 MAX_TRAIN_CONTEXT_TOKENS = 8192  # 单个训练 Datum 允许的最大 token 数。
@@ -381,6 +394,29 @@ def parse_args() -> argparse.Namespace:
         help="每条轨迹最多调用搜索工具的次数",
     )
     parser.add_argument(
+        "--search-backend",
+        choices=SEARCH_BACKENDS,
+        default="deepseek",
+        help="搜索后端：deepseek 更稳定但会产生 API 费用，zhihu 免费但有额度限制",
+    )
+    parser.add_argument(
+        "--search-concurrency",
+        type=int,
+        default=None,
+        help="不同轨迹之间的搜索并发；默认 deepseek=16、zhihu=1",
+    )
+    parser.add_argument(
+        "--search-model",
+        default="deepseek-v4-flash",
+        help="DeepSeek Search 使用的模型；zhihu 后端会忽略此参数",
+    )
+    parser.add_argument(
+        "--search-timeout",
+        type=float,
+        default=None,
+        help="单次搜索的超时秒数；默认 deepseek=60、zhihu=15",
+    )
+    parser.add_argument(
         "--max-assistant-turns",
         type=int,
         default=6,
@@ -470,6 +506,13 @@ def parse_args() -> argparse.Namespace:
 
 def main(args: argparse.Namespace) -> None:
     """运行同步训练循环，并仅在 rollout 采样时使用 async。"""
+    args.search_concurrency = resolve_search_concurrency(
+        args.search_backend, args.search_concurrency
+    )
+    args.search_timeout = resolve_search_timeout(
+        args.search_backend, args.search_timeout
+    )
+
     # 先固定打乱训练问题；max_train_samples 只用于限制本次实际参与训练的数据量。
     examples = shuffled_examples(args.data, args.seed)
     if args.max_train_samples > 0:
@@ -492,7 +535,12 @@ def main(args: argparse.Namespace) -> None:
 
     # tokenizer 来自训练客户端，保证 rollout、训练 Datum 使用完全相同的分词方式。
     tokenizer = training_client.get_tokenizer()
-    search_client = ZhihuSearchClient.from_env(Path(__file__).resolve().parent / ".env")
+    search_client = create_search_client(
+        args.search_backend,
+        Path(__file__).resolve().parent / ".env",
+        model=args.search_model,
+        timeout=args.search_timeout,
+    )
 
     # 将命令行中的采样、搜索次数和轨迹长度限制集中成 rollout 配置。
     rollout_config = RolloutConfig(
@@ -502,6 +550,7 @@ def main(args: argparse.Namespace) -> None:
         max_trajectory_tokens=args.max_trajectory_tokens,
         max_assistant_tokens=args.max_assistant_tokens,
         max_tool_response_tokens=args.max_tool_response_tokens,
+        search_concurrency=args.search_concurrency,
         temperature=args.temperature,
         top_p=args.top_p,
         seed=args.seed,
