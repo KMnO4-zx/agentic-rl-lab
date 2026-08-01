@@ -10,7 +10,7 @@ SEARCH_TOOL = {
     "type": "function",
     "function": {
         "name": "search",
-        "description": "Search Zhihu for evidence. Use a concise English query.",
+        "description": "Search the web for evidence. Use a concise English query.",
         "parameters": {
             "type": "object",
             "properties": {

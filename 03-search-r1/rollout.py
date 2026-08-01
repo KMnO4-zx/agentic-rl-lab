@@ -2,6 +2,7 @@
 
 import asyncio
 import copy
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
@@ -17,7 +18,7 @@ from protocol import (
     tool_message,
 )
 from reward import score_answer
-from search import SearchResult, ZhihuSearchClient, format_item
+from search import SearchClient, SearchResult, format_item
 
 
 @dataclass(frozen=True)
@@ -30,6 +31,7 @@ class RolloutConfig:
     max_trajectory_tokens: int = 8192  # 整条轨迹允许的最大 token 数。
     max_assistant_tokens: int = 1024  # assistant 单轮最多生成的 token 数。
     max_tool_response_tokens: int = 1024  # 单次搜索结果允许的最大 token 数。
+    search_concurrency: int = 16  # 不同轨迹之间并发执行的搜索请求数。
     temperature: float = 1.0  # 控制采样随机性。
     top_p: float = 1.0  # 核采样的累积概率上限。
     seed: int = 42  # 采样使用的随机种子。
@@ -74,6 +76,19 @@ class SampleRequest:
     num_samples: int  # 共需要采样的候选数量。
     max_tokens: int  # 每个候选最多生成的 token 数。
     seed: int  # 本次采样使用的随机种子。
+
+
+@dataclass(frozen=True)
+class PendingSearch:
+    """保存一条等待并发执行的轨迹搜索。"""
+
+    trajectory: Trajectory
+    messages_before_assistant: list[dict[str, Any]]
+    assistant_text: str
+    prompt_tokens: list[int]
+    completion_tokens: list[int]
+    call_id: str
+    query: str
 
 
 async def sample_requests_async(
@@ -187,15 +202,14 @@ def read_sequence(sequence: Any, tokenizer: Any) -> tuple[list[int], list[float]
     return tokens, logprobs, text
 
 
-def advance_trajectory(
+def consume_assistant(
     trajectory: Trajectory,
     prompt_tokens: list[int],
     sequence: Any,
     tokenizer: Any,
-    search_client: ZhihuSearchClient,
     config: RolloutConfig,
-) -> None:
-    """消费一次 assistant 输出，并推进搜索或结束轨迹。"""
+) -> PendingSearch | None:
+    """消费一次 assistant 输出，返回需要执行的搜索或直接结束轨迹。"""
     tokens, logprobs, text = read_sequence(sequence, tokenizer)
     trajectory.turns.append(AssistantTurn(prompt_tokens, tokens, logprobs, text))
     parsed = parse_assistant(text)
@@ -209,7 +223,7 @@ def advance_trajectory(
         trajectory.messages.append({"role": "assistant", "content": text})
         trajectory.final_text = text
         trajectory.done = True
-        return
+        return None
 
     call_id = (
         f"search-{trajectory.question_index}-{trajectory.group_index}-"
@@ -218,25 +232,66 @@ def advance_trajectory(
     messages_before_assistant = list(trajectory.messages)
     # messages 用于协议和结果记录；下一轮模型输入则由真实采样 token 连续构造。
     trajectory.messages.append({"role": "assistant", "content": text})
-    result = search_client.search(parsed.query or "")
+    return PendingSearch(
+        trajectory=trajectory,
+        messages_before_assistant=messages_before_assistant,
+        assistant_text=text,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=tokens,
+        call_id=call_id,
+        query=parsed.query or "",
+    )
+
+
+def finish_search(
+    pending: PendingSearch,
+    result: SearchResult,
+    tokenizer: Any,
+    config: RolloutConfig,
+) -> bool:
+    """把一条搜索 observation 接回对应轨迹，并返回轨迹是否结束。"""
     fitted = fit_tool_content(
         tokenizer,
-        messages_before_assistant,
-        text,
-        prompt_tokens,
-        tokens,
-        call_id,
+        pending.messages_before_assistant,
+        pending.assistant_text,
+        pending.prompt_tokens,
+        pending.completion_tokens,
+        pending.call_id,
         result,
         config,
     )
     if fitted is None:
-        trajectory.final_text = text
-        trajectory.done = True
-        return
+        pending.trajectory.final_text = pending.assistant_text
+        pending.trajectory.done = True
+        return True
     content, next_prompt_tokens = fitted
-    trajectory.messages.append(tool_message(call_id, content))
-    trajectory.next_prompt_tokens = next_prompt_tokens
-    trajectory.search_calls += 1
+    pending.trajectory.messages.append(tool_message(pending.call_id, content))
+    pending.trajectory.next_prompt_tokens = next_prompt_tokens
+    pending.trajectory.search_calls += 1
+    return False
+
+
+def resolve_searches(
+    pending_searches: list[PendingSearch],
+    search_client: SearchClient,
+    tokenizer: Any,
+    config: RolloutConfig,
+) -> int:
+    """并发执行不同轨迹的搜索，再按原顺序把 observation 接回轨迹。"""
+    if not pending_searches:
+        return 0
+    workers = min(config.search_concurrency, len(pending_searches))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        results = list(
+            pool.map(
+                search_client.search,
+                [pending.query for pending in pending_searches],
+            )
+        )
+    return sum(
+        finish_search(pending, result, tokenizer, config)
+        for pending, result in zip(pending_searches, results, strict=True)
+    )
 
 
 def score_trajectory(trajectory: Trajectory) -> None:
@@ -265,12 +320,14 @@ def assign_group_advantages(trajectories: list[Trajectory]) -> int:
 def rollout_batch(
     sampling_client: Any,
     tokenizer: Any,
-    search_client: ZhihuSearchClient,
+    search_client: SearchClient,
     examples: list[SearchExample],
     config: RolloutConfig,
     progress_callback: Callable[[int], None] | None = None,
 ) -> list[Trajectory]:
     """同步控制多轮状态机，并在轨迹结束时可选上报完成数量。"""
+    if config.search_concurrency < 1:
+        raise ValueError("search_concurrency 必须大于等于 1")
     # 每个问题先创建一条共享初始 prompt 的根轨迹。
     roots = [
         Trajectory(
@@ -302,6 +359,7 @@ def rollout_batch(
         responses = asyncio.run(
             sample_requests_async(sampling_client, first_requests, config, tokenizer)
         )
+        pending_searches: list[PendingSearch] = []
         for request, response in zip(first_requests, responses, strict=True):
             root = roots[request.trajectory_index]
             if len(response.sequences) != config.group_size:
@@ -310,19 +368,27 @@ def rollout_batch(
                 # 深拷贝保证每个分支拥有独立的 messages 和搜索历史。
                 branch = copy.deepcopy(root)
                 branch.group_index = group_index
-                # 消费首轮输出：可能直接结束，
-                # 也可能执行该分支自己的搜索。
-                advance_trajectory(
+                # 先解析全部分支，再并发执行其中需要的搜索。
+                pending = consume_assistant(
                     branch,
                     request.prompt_tokens,
                     sequence,
                     tokenizer,
-                    search_client,
                     config,
                 )
                 trajectories.append(branch)
+                if pending is not None:
+                    pending_searches.append(pending)
                 if branch.done and progress_callback is not None:
                     progress_callback(1)
+        completed = resolve_searches(
+            pending_searches,
+            search_client,
+            tokenizer,
+            config,
+        )
+        if completed and progress_callback is not None:
+            progress_callback(completed)
 
     # 首轮分叉后 prompt 已经不同，后续每条未结束轨迹单独采样一个结果。
     while any(not trajectory.done for trajectory in trajectories):
@@ -347,20 +413,30 @@ def rollout_batch(
             break
         # 各轨迹 prompt 不同，但仍通过多个 sample_async 并发采样。
         responses = asyncio.run(sample_requests_async(sampling_client, requests, config, tokenizer))
+        pending_searches = []
         for request, response in zip(requests, responses, strict=True):
             if len(response.sequences) != 1:
                 raise ValueError("后续轮次每条轨迹必须只采样一个分支")
             trajectory = trajectories[request.trajectory_index]
-            advance_trajectory(
+            pending = consume_assistant(
                 trajectory,
                 request.prompt_tokens,
                 response.sequences[0],
                 tokenizer,
-                search_client,
                 config,
             )
+            if pending is not None:
+                pending_searches.append(pending)
             if trajectory.done and progress_callback is not None:
                 progress_callback(1)
+        completed = resolve_searches(
+            pending_searches,
+            search_client,
+            tokenizer,
+            config,
+        )
+        if completed and progress_callback is not None:
+            progress_callback(completed)
 
     # 所有轨迹结束后先计算奖励，再按同题 group 计算中心化 advantage。
     for trajectory in trajectories:
