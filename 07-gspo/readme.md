@@ -1,5 +1,7 @@
 # 接下来我将复现 10 篇强化学习算法：第 7 篇，从零跑通GSPO，Aime25 提高6个点
 
+> 想跳过正文直接运行？请查看 [快速启动指南](./start.md)：准备数据 → 训练 → 评测。
+
 ![](./images/封面.png)
 
 <div align="center">
@@ -11,7 +13,6 @@
 > **代码与复现资源**
 >
 > - 本文完整代码：[KMnO4-zx/llm-agent-rl-lab/07-gspo](https://github.com/KMnO4-zx/llm-agent-rl-lab/tree/main/07-gspo)  
-> - 🚀 想直接运行代码？[快速跳转到「如何启动训练」](#如何启动训练)
 > - GSPO 论文：[Group Sequence Policy Optimization](https://arxiv.org/abs/2507.18071)
 > - SwanLab：[100-step 完整训练记录](https://swanlab.cn/@kmno4/llm-agent-rl-lab-gspo/runs/o83z2ghp/chart)
 > - PyTRIO 文档：[https://docs.pytrio.com/docs](https://docs.pytrio.com/docs)
