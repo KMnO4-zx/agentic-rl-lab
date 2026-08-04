@@ -22,6 +22,17 @@ uv run python train.py \
     --run-name search-r1-qwen35-4b-deepseek \
     --swanlab-mode online
 
+使用 Wikipedia 进行无需搜索 API Key 的小规模训练：
+uv run python train.py \
+    --max-steps 20 \
+    --questions-per-batch 8 \
+    --group-size 8 \
+    --save-every 5 \
+    --base-model Qwen/Qwen3.5-4B \
+    --search-backend wikipedia \
+    --run-name search-r1-qwen35-4b-wikipedia \
+    --swanlab-mode online
+
 使用知乎搜索进行小规模训练：
 uv run python train.py \
     --max-steps 20 \
@@ -397,18 +408,18 @@ def parse_args() -> argparse.Namespace:
         "--search-backend",
         choices=SEARCH_BACKENDS,
         default="deepseek",
-        help="搜索后端：deepseek 更稳定但会产生 API 费用，zhihu 免费但有额度限制",
+        help="搜索后端：deepseek 付费高并发，wikipedia 免费免密钥，zhihu 免费但有额度限制",
     )
     parser.add_argument(
         "--search-concurrency",
         type=int,
         default=None,
-        help="不同轨迹之间的搜索并发；默认 deepseek=16、zhihu=1",
+        help="不同轨迹之间的搜索并发；默认 deepseek=16、wikipedia=3、zhihu=1",
     )
     parser.add_argument(
         "--search-model",
         default="deepseek-v4-flash",
-        help="DeepSeek Search 使用的模型；zhihu 后端会忽略此参数",
+        help="DeepSeek Search 使用的模型；wikipedia 和 zhihu 后端会忽略此参数",
     )
     parser.add_argument(
         "--search-timeout",

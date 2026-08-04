@@ -155,18 +155,18 @@ def parse_args() -> argparse.Namespace:
         "--search-backend",
         choices=SEARCH_BACKENDS,
         default="deepseek",
-        help="搜索后端：deepseek 更稳定但会产生 API 费用，zhihu 免费但有额度限制",
+        help="搜索后端：deepseek 付费高并发，wikipedia 免费免密钥，zhihu 免费但有额度限制",
     )
     parser.add_argument(
         "--search-concurrency",
         type=int,
         default=None,
-        help="不同轨迹之间的搜索并发；默认 deepseek=16、zhihu=1",
+        help="不同轨迹之间的搜索并发；默认 deepseek=16、wikipedia=3、zhihu=1",
     )
     parser.add_argument(
         "--search-model",
         default="deepseek-v4-flash",
-        help="DeepSeek Search 使用的模型；zhihu 后端会忽略此参数",
+        help="DeepSeek Search 使用的模型；wikipedia 和 zhihu 后端会忽略此参数",
     )
     parser.add_argument(
         "--search-timeout",
