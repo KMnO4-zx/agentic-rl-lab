@@ -16,10 +16,12 @@
 > - Search-R1 论文：[Search-R1: Training LLMs to Reason and Leverage Search Engines with Reinforcement Learning](https://arxiv.org/abs/2503.09516)
 > - Search-R1 官方实现：[PeterGriffinJin/Search-R1](https://github.com/PeterGriffinJin/Search-R1)
 > - DeepSeek Search 工具：[KMnO4-zx/deepseek-search](https://github.com/KMnO4-zx/deepseek-search)
+> - Wikipedia 搜索 API：[Wikimedia Action API](https://www.mediawiki.org/wiki/API:Main_page)
 > - 知乎搜索 API Key 申请：[知乎数据开放平台](https://developer.zhihu.com/)
 > - PyTRIO 官网：[https://pytrio.com/](https://pytrio.com/)
 > - SwanLab · 知乎搜索实验：[200-step 训练记录](https://swanlab.cn/@kmno4/llm-agent-rl-lab-search-r1/runs/iy76hn51/chart)
 > - SwanLab · DeepSeek Search 实验：[20-step 训练记录](https://swanlab.cn/@kmno4/llm-agent-rl-lab-search-r1/runs/06e4gw6a)
+> - SwanLab · Wikipedia 实验：[20-step 训练记录](https://swanlab.cn/@kites/llm-agent-rl-lab-search-r1/runs/swi5nd46)
 > - PyTRIO Skill：[SwanHubX/pytrio-skill](https://github.com/SwanHubX/pytrio-skill)
 
 这是“接下来我将复现 10 篇强化学习算法”系列的第三篇。
@@ -32,7 +34,7 @@
 
 这一次终于轮到我一直很想做的 Agentic RL：让模型在回答问题的过程中，自己决定什么时候搜索、搜索什么、看到搜索结果后要不要继续搜，最后再给出答案。
 
-> **更新：现在支持两种搜索后端。** 通过 `--search-backend deepseek` 可以使用更稳定、支持并发的 DeepSeek Search；通过 `--search-backend zhihu` 可以继续使用免费的知乎搜索。rollout、reward、advantage 和 loss 代码完全共用。
+> **更新：现在支持三种搜索后端。** 通过 `--search-backend deepseek` 可以使用支持高并发的 DeepSeek Search；通过 `--search-backend wikipedia` 可以免密钥使用英文 Wikipedia；通过 `--search-backend zhihu` 可以继续使用免费的知乎搜索。rollout、reward、advantage 和 loss 代码完全共用。
 
 先说最让我开心的一件事：这个实验很便宜，少喝一杯奶茶就行了。
 
@@ -174,6 +176,7 @@ retriever server 为什么 OOM？
 ```text
 原论文：本地 Wikipedia corpus + E5 retriever
 本文：  DeepSeek Search Evidence 模式（默认）
+        或 Wikipedia Action API
         或知乎全局搜索 API
 ```
 
@@ -189,12 +192,15 @@ DeepSeek Search 来自我单独维护的 [`deepseek-search`](https://github.com/
 
 ![](./images/deepseek-search.png)
 
-两个后端共用同一个 `search(query) → observations` 接口，主要区别如下：
+三个后端共用同一个 `search(query) → observations` 接口，主要区别如下：
 
 | 搜索后端 | 返回内容 | 默认并发 | 默认超时 | 成本与稳定性 |
 | --- | --- | ---: | ---: | --- |
 | DeepSeek Search | 受约束的 Evidence 证据 | 16 | 60 秒 | 按 API 用量计费，本次实验更稳定 |
+| Wikipedia | Top 3 英文词条正文片段和 URL | 3 | 15 秒 | 免费、无需 API Key，证据范围限于 Wikipedia |
 | 知乎搜索 | Top 3 标题、正文片段、来源和 URL | 1 | 15 秒 | 免费，每个 key 有每日额度限制 |
+
+Wikipedia 客户端使用可识别的 User-Agent，并把所有并发请求的启动速率限制在约 200 RPM，以遵循 [Wikimedia API 的公开限额](https://www.mediawiki.org/wiki/Wikimedia_APIs/Rate_limits)。一次 Action API 请求会同时完成全文检索并取得 Top 3 页面正文，不需要额外抓取页面。
 
 我在 DeepSeek API 后台看到，这次 20-step 训练对应的当日消费约为 `14.06` 元。实际费用会随搜索次数、输入 token 和缓存命中情况变化，因此这个数字只作为本次实验的成本记录。
 
@@ -205,7 +211,7 @@ DeepSeek Search 来自我单独维护的 [`deepseek-search`](https://github.com/
 | Base Model | `Qwen/Qwen3.5-4B` |
 | 训练参数 | LoRA rank 32 |
 | 训练框架 | PyTRIO |
-| 搜索环境 | DeepSeek Search / 知乎搜索，可通过参数切换 |
+| 搜索环境 | DeepSeek Search / Wikipedia / 知乎搜索，可通过参数切换 |
 | 训练数据 | NQ + HotpotQA |
 | 每个 step | 8 道问题 |
 | 每道问题 | 8 条轨迹 |
@@ -218,7 +224,7 @@ DeepSeek Search 来自我单独维护的 [`deepseek-search`](https://github.com/
 
 这次复现聚焦于**核心算法**，不追求逐项复刻原论文的基础设施和最终分数：保留问题、工具、环境交互、group-relative advantage、retrieved-token mask 和 policy update，把最重的本地检索基础设施换成更容易获得的在线搜索服务。
 
-我认为这对于学习算法更有价值。预算优先时可以选择知乎搜索，希望训练环境更加稳定时可以选择 DeepSeek Search。等真正需要追求论文指标时，再把 `search(query)` 换回本地 Wikipedia retriever。
+我认为这对于学习算法更有价值。希望免密钥完整跑通流程时可以选择 Wikipedia，需要通用网页覆盖和更高并发时可以选择 DeepSeek Search，也可以继续使用知乎搜索。等真正需要追求论文指标时，再把 `search(query)` 换回本地 Wikipedia retriever。
 
 ## 为什么我觉得 PyTRIO 很适合 Agentic RL？
 
@@ -381,7 +387,7 @@ DeepSeek run 里的 degenerate group 比例也更高。这个指标只表示同�
 ├── prepare_data.py   # 下载并整理训练与评测数据
 ├── data.py           # 读取本地 JSONL
 ├── protocol.py       # search tool schema、prompt 和 tool-call 解析
-├── search.py         # DeepSeek / 知乎双搜索后端
+├── search.py         # DeepSeek / Wikipedia / 知乎三种搜索后端
 ├── rollout.py        # 多轮工具调用状态机
 ├── reward.py         # EM + Format reward
 ├── train.py          # PyTRIO Search-R1 训练循环
@@ -471,9 +477,9 @@ search_client = create_search_client(
 )
 ```
 
-`DeepSeekSearchClient` 调用 `mode="evidence"`，把编号 Evidence 解析成统一的 `SearchItem`；`ZhihuSearchClient` 会轮转多个 key，并保留 Top 3 的标题、正文片段、来源和 URL。它们最终都返回相同的 `SearchResult`，所以后面的多轮状态机完全不知道当前使用的是哪一家搜索服务。
+`DeepSeekSearchClient` 调用 `mode="evidence"`，把编号 Evidence 解析成统一的 `SearchItem`；`WikipediaSearchClient` 通过一次 Action API 请求取得 Top 3 英文词条的正文片段和 URL；`ZhihuSearchClient` 会轮转多个 key，并保留 Top 3 的标题、正文片段、来源和 URL。它们最终都返回相同的 `SearchResult`，所以后面的多轮状态机完全不知道当前使用的是哪一家搜索服务。
 
-两个客户端都会记录成功率、错误率、429 和延迟。DeepSeek 后端还会额外记录搜索请求数、返回证据数、输入 token、缓存命中 token 和输出 token，方便把环境质量与 API 成本一起观察。
+三个客户端都会记录成功率、错误率、429 和延迟。DeepSeek 后端还会额外记录搜索请求数、返回证据数、输入 token、缓存命中 token 和输出 token，方便把环境质量与 API 成本一起观察。
 
 ## 第三步：让一组轨迹在搜索后真正分叉
 
@@ -739,6 +745,8 @@ uv run deepseek-search login
 DEEPSEEK_API_KEY=your_deepseek_api_key
 ```
 
+如果希望使用无需 API Key 的公开后端，选择 `--search-backend wikipedia` 即可。它搜索英文 Wikipedia，默认并发为 `3`，默认超时为 `15` 秒，不需要修改 `.env`。
+
 如果希望使用免费的知乎搜索，可以打开[知乎数据开放平台](https://developer.zhihu.com/)，登录后进入「个人中心」申请搜索 API Key。当前页面提供「注册免费获取 1000 次/天调用」的入口，实际额度以平台页面为准。
 
 ![](./images/zhihu-search.png)
@@ -773,6 +781,20 @@ uv run python train.py \
     --swanlab-mode online
 ```
 
+使用 Wikipedia：
+
+```bash
+uv run python train.py \
+    --max-steps 20 \
+    --questions-per-batch 8 \
+    --group-size 8 \
+    --save-every 5 \
+    --base-model Qwen/Qwen3.5-4B \
+    --search-backend wikipedia \
+    --run-name search-r1-qwen35-4b-wikipedia \
+    --swanlab-mode online
+```
+
 使用知乎搜索：
 
 ```bash
@@ -787,7 +809,7 @@ uv run python train.py \
     --swanlab-mode online
 ```
 
-DeepSeek 默认使用 `16` 个搜索并发和 `60` 秒超时；知乎默认使用 `1` 个搜索并发和 `15` 秒超时。需要调整时可以传入 `--search-concurrency` 和 `--search-timeout`。正式训练可以把 `--max-steps` 改为 `100`，并把 `--save-every` 改为 `50`。
+DeepSeek 默认使用 `16` 个搜索并发和 `60` 秒超时；Wikipedia 默认使用 `3` 个搜索并发和 `15` 秒超时；知乎默认使用 `1` 个搜索并发和 `15` 秒超时。需要调整时可以传入 `--search-concurrency` 和 `--search-timeout`。正式训练可以把 `--max-steps` 改为 `100`，并把 `--save-every` 改为 `50`。
 
 这 20 个 step 每步使用 8 道问题，每道问题采样 8 条真实多轮工具轨迹。每 5 step 会保存一次：
 
@@ -833,7 +855,7 @@ uv run python eval.py \
     --output eval_result/eval_results_rl_step_20_deepseek_search.jsonl
 ```
 
-使用知乎后端时，两次评测都改成 `--search-backend zhihu`，输出文件分别使用 `eval_results.jsonl` 和 `eval_results_rl_step_20.jsonl`。Base 和 checkpoint 必须使用同一个搜索后端与同一组搜索配置，跨后端的绝对分数不能直接比较。
+使用 Wikipedia 后端时，两次评测都改成 `--search-backend wikipedia --search-concurrency 3 --search-timeout 15`；使用知乎后端时改成 `--search-backend zhihu`。请为不同后端使用不同的输出文件名。Base 和 checkpoint 必须使用同一个搜索后端与同一组搜索配置，跨后端的绝对分数不能直接比较。
 
 如果只想先检查整条链路，可以添加 `--limit 20`，再决定是否运行固定 70 题评测。
 
@@ -910,7 +932,7 @@ Search-R1 看起来像一个复杂的 Agent 训练系统，但拆开以后，它
 
 原论文的 160 GB 检索数据库和约 180 GB 内存需求，对于严格复刻论文当然有价值；在学习算法的阶段，先承担这套基础设施会带来很高的成本。本文用可切换的在线搜索服务替代本地检索器，把进入 Search-R1 的门槛降到了普通开发者能够接受的程度。
 
-你不需要训练几百 step。运行 20 step，就已经能够看到 Format Rate 和模型行为发生变化。预算优先时可以使用免费的知乎搜索；希望环境稳定、并发更高时可以使用 DeepSeek Search。这次知乎版本的 PyTRIO 训练账单是 `13.30` 元，DeepSeek 20-step 实验的搜索 API 后台消费约为 `14.06` 元。
+你不需要训练几百 step。运行 20 step，就已经能够看到 Format Rate 和模型行为发生变化。希望免密钥运行时可以使用 Wikipedia；需要通用网页覆盖和更高并发时可以使用 DeepSeek Search；也可以继续使用知乎搜索。这次知乎版本的 PyTRIO 训练账单是 `13.30` 元，DeepSeek 20-step 实验的搜索 API 后台消费约为 `14.06` 元，Wikipedia 搜索本身没有 API 费用。
 
 对我来说，这也是 PyTRIO 最吸引人的地方：我终于可以把时间集中在 reward、rollout、loss mask 和实验设计上，省去维护庞大训推集群的前置负担。
 

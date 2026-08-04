@@ -1,5 +1,6 @@
-"""提供 DeepSeek Search 和知乎搜索两个后端。"""
+"""提供 DeepSeek Search、Wikipedia 和知乎搜索三个后端。"""
 
+import gzip
 import json
 import os
 import re
@@ -19,10 +20,15 @@ from deepseek_search.config import resolve_api_key
 from dotenv import load_dotenv
 
 
-SEARCH_BACKENDS = ("deepseek", "zhihu")
+SEARCH_BACKENDS = ("deepseek", "wikipedia", "zhihu")
 SEARCH_ENDPOINT = "https://developer.zhihu.com/api/v1/content/global_search"
-DEFAULT_SEARCH_CONCURRENCY = {"deepseek": 16, "zhihu": 1}
-DEFAULT_SEARCH_TIMEOUT = {"deepseek": 60.0, "zhihu": 15.0}
+WIKIPEDIA_SEARCH_ENDPOINT = "https://en.wikipedia.org/w/api.php"
+WIKIPEDIA_USER_AGENT = (
+    "llm-agent-rl-lab/0.1 "
+    "(https://github.com/KMnO4-zx/llm-agent-rl-lab)"
+)
+DEFAULT_SEARCH_CONCURRENCY = {"deepseek": 16, "wikipedia": 3, "zhihu": 1}
+DEFAULT_SEARCH_TIMEOUT = {"deepseek": 60.0, "wikipedia": 15.0, "zhihu": 15.0}
 EVIDENCE_PATTERN = re.compile(
     r"^\[(?:\d+)\]\s*Source:\s*(.*?)\s*\nEvidence:\s*(.*?)"
     r"(?=\n\s*\n\[(?:\d+)\]\s*Source:|\Z)",
@@ -198,6 +204,164 @@ class DeepSeekSearchClient:
         status: int | None = None,
     ) -> SearchResult:
         """把请求异常转换为不会泄露密钥的工具结果。"""
+        latency = time.perf_counter() - started
+        with self.stats._lock:
+            self.stats.errors += 1
+            self.stats.latency_total += latency
+        return SearchResult(False, [], latency, status=status, error=message)
+
+
+@dataclass
+class WikipediaSearchClient:
+    """使用 Wikimedia Action API 搜索英文 Wikipedia 并返回页面正文片段。"""
+
+    timeout: float = DEFAULT_SEARCH_TIMEOUT["wikipedia"]
+    max_retries: int = 2
+    retry_delay: float = 1.0
+    min_request_interval: float = 0.31
+    stats: SearchStats = field(
+        default_factory=lambda: SearchStats(backend="wikipedia")
+    )
+    _rate_lock: threading.Lock = field(
+        default_factory=threading.Lock, init=False, repr=False
+    )
+    _next_request_time: float = field(default=0.0, init=False, repr=False)
+
+    def search(self, query: str) -> SearchResult:
+        """搜索 Top 3 页面；所有并发调用共享约 200 RPM 的启动限速。"""
+        started = time.perf_counter()
+        with self.stats._lock:
+            self.stats.requests += 1
+
+        saw_timeout = False
+        saw_rate_limit = False
+        attempt = 0
+        while True:
+            self._wait_for_rate_slot()
+            try:
+                result = self._request(query, started)
+                with self.stats._lock:
+                    self.stats.successes += 1
+                    self.stats.latency_total += result.latency
+                    self.stats.result_count += len(result.items)
+                return result
+            except urllib.error.HTTPError as error:
+                if error.code == 429 and not saw_rate_limit:
+                    with self.stats._lock:
+                        self.stats.rate_limits += 1
+                    saw_rate_limit = True
+                retryable = error.code == 429 or error.code >= 500
+                if retryable and attempt < self.max_retries:
+                    retry_after = error.headers.get("Retry-After")
+                    delay = (
+                        float(retry_after)
+                        if retry_after and retry_after.isdigit()
+                        else self.retry_delay * (2**attempt)
+                    )
+                    time.sleep(delay)
+                    attempt += 1
+                    continue
+                return self._error_result(started, f"HTTP {error.code}", error.code)
+            except (TimeoutError, socket.timeout):
+                if not saw_timeout:
+                    with self.stats._lock:
+                        self.stats.timeouts += 1
+                    saw_timeout = True
+                if attempt < self.max_retries:
+                    time.sleep(self.retry_delay * (2**attempt))
+                    attempt += 1
+                    continue
+                return self._error_result(started, "request timeout")
+            except urllib.error.URLError as error:
+                if isinstance(error.reason, (TimeoutError, socket.timeout)):
+                    if not saw_timeout:
+                        with self.stats._lock:
+                            self.stats.timeouts += 1
+                        saw_timeout = True
+                    if attempt < self.max_retries:
+                        time.sleep(self.retry_delay * (2**attempt))
+                        attempt += 1
+                        continue
+                    return self._error_result(started, "request timeout")
+                return self._error_result(started, type(error).__name__)
+            except (json.JSONDecodeError, KeyError, TypeError) as error:
+                return self._error_result(started, type(error).__name__)
+
+    def _wait_for_rate_slot(self) -> None:
+        """序列化请求启动时间，避免超过 Wikimedia 的识别客户端分钟限额。"""
+        with self._rate_lock:
+            now = time.monotonic()
+            delay = self._next_request_time - now
+            if delay > 0:
+                time.sleep(delay)
+                now = time.monotonic()
+            self._next_request_time = now + self.min_request_interval
+
+    def _request(self, query: str, started: float) -> SearchResult:
+        """一次请求同时执行全文搜索并取得前三个页面的纯文本摘要。"""
+        params = urllib.parse.urlencode(
+            {
+                "action": "query",
+                "format": "json",
+                "formatversion": 2,
+                "generator": "search",
+                "gsrsearch": query,
+                "gsrlimit": 3,
+                "prop": "extracts|info",
+                "explaintext": 1,
+                "exintro": 1,
+                "exchars": 1200,
+                "inprop": "url",
+                "redirects": 1,
+                "utf8": 1,
+            }
+        )
+        request = urllib.request.Request(
+            f"{WIKIPEDIA_SEARCH_ENDPOINT}?{params}",
+            headers={
+                "Accept": "application/json",
+                "Accept-Encoding": "gzip",
+                "User-Agent": WIKIPEDIA_USER_AGENT,
+            },
+        )
+        with urllib.request.urlopen(request, timeout=self.timeout) as response:
+            body = response.read()
+            if response.headers.get("Content-Encoding") == "gzip":
+                body = gzip.decompress(body)
+            payload = json.loads(body.decode("utf-8"))
+            pages = payload.get("query", {}).get("pages", [])
+            if not isinstance(pages, list):
+                raise TypeError("Wikipedia 搜索响应 pages 不是列表")
+            if any(not isinstance(page, dict) for page in pages):
+                raise TypeError("Wikipedia 搜索响应 page 不是对象")
+            ordered_pages = sorted(
+                pages,
+                key=lambda page: int(page.get("index", 1_000_000)),
+            )
+            items = [
+                SearchItem(
+                    title=str(page.get("title") or "Untitled").strip(),
+                    content=str(page.get("extract") or "").strip(),
+                    source="Wikipedia",
+                    url=str(page.get("fullurl") or "").strip(),
+                )
+                for page in ordered_pages
+                if str(page.get("extract") or "").strip()
+            ]
+            return SearchResult(
+                ok=True,
+                items=items,
+                latency=time.perf_counter() - started,
+                status=response.status,
+            )
+
+    def _error_result(
+        self,
+        started: float,
+        message: str,
+        status: int | None = None,
+    ) -> SearchResult:
+        """把请求异常转换成 rollout 可观察、不中断训练的搜索结果。"""
         latency = time.perf_counter() - started
         with self.stats._lock:
             self.stats.errors += 1
@@ -393,7 +557,7 @@ class ZhihuSearchClient:
         return SearchResult(False, [], latency, status=status, error=message)
 
 
-SearchClient = DeepSeekSearchClient | ZhihuSearchClient
+SearchClient = DeepSeekSearchClient | WikipediaSearchClient | ZhihuSearchClient
 
 
 def resolve_search_concurrency(backend: str, value: int | None) -> int:
@@ -423,7 +587,7 @@ def create_search_client(
     model: str = "deepseek-v4-flash",
     timeout: float | None = None,
 ) -> SearchClient:
-    """按名称创建搜索后端；两个后端共用同一套 rollout 接口。"""
+    """按名称创建搜索后端；三个后端共用同一套 rollout 接口。"""
     resolved_timeout = resolve_search_timeout(backend, timeout)
     if backend == "deepseek":
         return DeepSeekSearchClient.from_env(
@@ -431,6 +595,8 @@ def create_search_client(
             model=model,
             timeout=resolved_timeout,
         )
+    if backend == "wikipedia":
+        return WikipediaSearchClient(timeout=resolved_timeout)
     if backend == "zhihu":
         return ZhihuSearchClient.from_env(
             env_path,

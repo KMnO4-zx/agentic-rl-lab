@@ -20,6 +20,8 @@ uv run python 03-search-r1/prepare_data.py
 uv run deepseek-search login
 ```
 
+Wikipedia 搜索无需 API Key。客户端会使用英文 Wikimedia Action API，并按其公开限额默认使用 3 个并发。
+
 使用知乎搜索时，在 `03-search-r1/.env` 中填写 `ZHIHU_SEARCH_KEYS`。配置模板位于 `03-search-r1/.env.example`。
 
 ## 2. 启动训练
@@ -35,6 +37,20 @@ uv run python 03-search-r1/train.py \
     --base-model Qwen/Qwen3.5-4B \
     --search-backend deepseek \
     --run-name search-r1-qwen35-4b-deepseek \
+    --swanlab-mode online
+```
+
+Wikipedia 后端：
+
+```bash
+uv run python 03-search-r1/train.py \
+    --max-steps 20 \
+    --questions-per-batch 8 \
+    --group-size 8 \
+    --save-every 5 \
+    --base-model Qwen/Qwen3.5-4B \
+    --search-backend wikipedia \
+    --run-name search-r1-qwen35-4b-wikipedia \
     --swanlab-mode online
 ```
 
@@ -82,4 +98,4 @@ uv run python 03-search-r1/eval.py \
     --output 03-search-r1/eval_result/eval_results_rl_step_20_deepseek_search.jsonl
 ```
 
-评测知乎后端时，两条命令都改为 `--search-backend zhihu`。Base 与 checkpoint 必须使用相同的后端和搜索配置。
+评测 Wikipedia 后端时，两条命令都改为 `--search-backend wikipedia --search-concurrency 3 --search-timeout 15`；评测知乎后端时改为 `--search-backend zhihu`。Base 与 checkpoint 必须使用相同的后端和搜索配置。

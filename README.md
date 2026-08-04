@@ -45,7 +45,7 @@
 | [第 1 篇](./01-grpo/readme.md) | GRPO | 复现 GSM8K 上的 GRPO，并比较 `importance_sampling` / `ppo` / `cispo` 三个 loss |
 | [第 2 篇](./02-opd/general-opd/readme.md) | General OPD | 用 DeepMath-103K 跑通 Student 采样、Teacher 打分与 reverse KL 的最小闭环 |
 | [第 2 篇](./02-opd/readme.md) | Medical OPD | 从 Medical SFT 出发，用 SAR-OPD 和 IDT-OPD 增强医疗能力，同时保持通用能力 |
-| [第 3 篇](./03-search-r1/readme.md) | Search-R1 | 用 Qwen3.5-4B、PyTRIO 和知乎搜索 API 复现多轮搜索 RL |
+| [第 3 篇](./03-search-r1/readme.md) | Search-R1 | 用 Qwen3.5-4B、PyTRIO 和可切换的在线搜索后端复现多轮搜索 RL |
 | [第 4 篇](./04-opsd/readme.md) | OPSD | 用固定的 step-0 Teacher 蒸馏 Student 自采样轨迹 |
 | [第 5 篇](./05-retool/readme.md) | ReTool | 用 Qwen3.5-4B、PyTRIO 和本地代码沙箱复现代码交织的 Agentic RL |
 | [第 6 篇](./06-dapo/readme.md) | DAPO | 拆解四项核心改进，并记录 Dynamic Sampling 在真实训练中的时间成本 |
