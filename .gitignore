@@ -47,6 +47,9 @@ htmlcov/
 03-search-r1/eval_result/
 03-search-r1/.env*
 !03-search-r1/.env.example
+08-alfworld/datasets/
+08-alfworld/eval_results/
+08-alfworld/outputs/
 nosetests.xml
 coverage.xml
 *.cover
