@@ -24,29 +24,31 @@
 
 这次实验和前几篇很不一样。
 
-- 一条轨迹最多与环境交互 50 次；
-- 评测中的平均轨迹长度已经达到 21～23 步；
-- 每次工具调用都会真正改变 TextWorld / PDDL 环境状态；
-- 模型下一步能看到从任务开始到当前时刻的完整工具历史；
-- 单条完整训练序列的上限从过去常见的 4K～8K 提高到了 12K tokens；
-- 每个训练 update 包含 8 个游戏，每个游戏采样 8 条独立轨迹，一共 64 条长轨迹。
+- 一条轨迹最多与环境交互 **50 次**；
+- 评测中的平均轨迹长度已经达到 **21～23 步**；
+- 每次工具调用都会**真正改变 TextWorld / PDDL 环境状态**；
+- 模型下一步能看到**从任务开始到当前时刻的完整工具历史**；
+- 单条完整训练序列的上限从过去常见的 4K～8K 提高到了 **12K tokens**；
+- 每个训练 update 包含 **8 个游戏**，每个游戏采样 **8 条独立轨迹**，一共 **64 条长轨迹**。
 
 代价也很直接。前几篇还能拿一杯奶茶、两杯瑞幸来算成本，这次 PyTRIO 的正式训练账单达到了 **¥1613.71**。
 
-好消息是，这笔钱确实换来了可见的提升。80 steps 之后，固定 274 个游戏上的总体成功率从 `52.92%` 提高到 `56.93%`，Valid Unseen 从 `52.99%` 提高到 `58.96%`，同时平均非法动作数从 `5.41` 降到了 `4.81`。
-
-先看结果：
+好消息是，这笔钱确实换来了可见的提升。先看结果：80 steps 之后，固定 274 个游戏上的总体成功率从 `52.92%` 提高到 `56.93%`，Valid Unseen 从 `52.99%` 提高到 `58.96%`，同时平均非法动作数从 `5.41` 降到了 `4.81`。
 
 ![](./images/alfworld_checkpoint_evaluation.png)
 
 这篇 Blog 会依次讲清楚：ALFWorld 是什么、怎样把它包装成一个工具、怎样借用 GRPO 的 group-relative 思想做长轨迹 Agentic RL，以及整套代码是如何组织起来的。
 
-## ALFWorld 是什么？
+## 0. ALFWorld 是什么？
 
-ALFWorld 是 Mohit Shridhar 等人在 ICLR 2021 提出的交互式环境。它把两套原本距离很远的世界对齐了起来：
+ALFWorld 是 Mohit Shridhar 等人在 ICLR 2021 论文 [*ALFWorld: Aligning Text and Embodied Environments for Interactive Learning*](https://openreview.net/forum?id=0IOX0YcCdTn) 中提出的交互式环境。它把两套原本距离很远的世界对齐了起来：
 
 - **TextWorld**：Agent 通过文字 observation 和文字 action 完成任务，环境内部用 PDDL 维护状态；
 - **ALFRED / AI2-THOR**：Agent 在三维房间中接收视觉输入，再通过导航和物体操作完成具身任务。
+
+![ALFWorld 中对齐的 TextWorld 文本环境与 AI2-THOR 具身环境](./images/alfworld_textworld_embodied.png)
+
+*同一类任务的两种视角：左侧是本文使用的 TextWorld 文本交互，右侧是 AI2-THOR 中的具身厨房与底层动作。图片来源：[ALFWorld 官方项目](https://github.com/alfworld/alfworld/blob/master/media/alfworld_teaser.png)。*
 
 原论文希望 Agent 先在抽象的文字世界里学习高层策略，再把这些策略对应到视觉环境中的具体动作。比如下面这个任务：
 
@@ -68,7 +70,7 @@ Put a heated apple in the fridge.
 → 把苹果放进去
 ```
 
-ALFWorld 把这些步骤变成可执行的环境动作。Agent 每执行一个 action，环境就更新一次物体位置、容器开关状态、物品温度以及当前可执行动作。
+可以把 ALFWorld 理解成一个文字版的家务模拟器：模型每说一句“拿起苹果”或“打开冰箱”，模拟器都会先检查这件事现在能不能做。动作执行后，模拟器会记住苹果被拿走了、冰箱被打开了等变化，再把新的房间情况告诉模型，让它继续决定下一步。
 
 本文只使用 ALFWorld 的 **text-only 模式**。模型看不到厨房图片，但它面对的依然是一个真正维护状态、会检查动作前置条件、能够判断任务是否完成的交互环境。
 
@@ -99,11 +101,13 @@ ALFWorld 把这些步骤变成可执行的环境动作。Agent 每执行一个 a
 
 这里需要把 ALFWorld 原论文与本文的训练方法分开。
 
-ALFWorld 原论文的主要贡献是文字环境与具身环境的对齐，官方 Agent 训练以 DAgger 等方法为主。本文使用它提供的 text-only 环境，自行加入 **GRPO-style group rollout、组相对 advantage 和在线 PPO 更新**。
+ALFWorld 原论文的主要贡献是文字环境与具身环境的对齐，官方 Agent 训练以 [DAgger](https://proceedings.mlr.press/v15/ross11a.html) 等方法为主。本文使用它提供的 text-only 环境，自行加入 **[GRPO-style group rollout 与组相对 advantage](https://arxiv.org/abs/2402.03300)**，再通过 **[PPO](https://arxiv.org/abs/1707.06347)** 在线更新。
 
 因此，本文复现范围限定为一套“基于 ALFWorld 的 LLM Agentic RL recipe”。ALFWorld 原论文的训练算法与视觉 BUTLER 系统不在本次范围内。
 
-## 把做家务变成一个工具调用
+明确了环境与复现边界后，下一步就是把这套文字交互接进 LLM 能够稳定调用的工具协议。
+
+## 1. 把做家务变成一个工具调用
 
 我们只给模型一个工具：
 
@@ -151,7 +155,9 @@ TextWorld / PDDL 执行动作并更新状态
 
 这点很重要。做家务是一个强状态依赖任务：模型需要记得自己开过哪个柜门、苹果现在拿在手里还是已经放进微波炉、加热完成后又把它放到了哪里。丢掉早期历史，很容易让 Agent 重复搜索、拿错物体或忘记已经完成的中间步骤。
 
-## 如何启动训练和评估
+知道一条轨迹如何产生后，我们先把整套系统真正跑起来，再回到训练算法内部看 reward 和 advantage 如何作用于这些轨迹。
+
+## 2. 如何启动训练和评估
 
 项目要求 Python `>=3.13`。ALFWorld 通过可选依赖安装，因此其他子项目执行普通 `uv sync` 时不需要下载 TextWorld 环境。
 
@@ -230,7 +236,9 @@ cd ..
 uv run python 08-alfworld/analysis.py
 ```
 
-## 我们怎样加入 GRPO 的思想？
+这些命令负责把实验跑起来；要理解模型究竟从 64 条长轨迹中学到了什么，还要继续拆开每个 rollout batch 里的 reward、advantage 与 PPO 更新。
+
+## 3. 我们怎样加入 GRPO 的思想？
 
 GRPO 最有用的思想之一，是对同一个问题采样一组回答，再用组内相对 reward 计算 advantage。
 
@@ -321,7 +329,9 @@ training_client.forward_backward(
 
 > **我们使用 GRPO-style 的同游戏 group rollout 和 group-relative advantage，再用 PPO loss 更新 Qwen3.5-4B 的 LoRA。**
 
-## 这一次，Agentic RL 更像真的 Agent
+算法闭环到这里已经完整，而这些 advantage 对应的是一串会持续改变世界的决策，这正是本次实验与前几篇最大的不同。
+
+## 4. 这一次，Agentic RL 更像真的 Agent
 
 这次实验最让我兴奋的地方，是 Agentic RL 终于扩展到了连续多轮、真实改变环境状态的决策过程。
 
@@ -337,7 +347,9 @@ training_client.forward_backward(
 
 Text-only 也让实验保持了可运行性。TextWorld / PDDL 负责精确状态转移，PyTRIO 负责远端模型采样和训练，本地 Python 则专注于环境编排、reward、advantage 与轨迹记录。
 
-## 训练配置与成本
+更长的决策链带来了更真实的 Agent 行为，也直接把上下文长度、采样量和训练成本推到了新的量级。
+
+## 5. 训练配置与成本
 
 正式实验使用下面这组配置：
 
@@ -386,7 +398,7 @@ prefilling 远高于 train 和 sample。原因就藏在 Agent 循环里：每执
 
 在线 rollout 的任务类型和难度会随 batch 变化，因此训练 success rate 与 reward 有明显波动。trainer 侧的 loss 和 token count 则保持在可控范围内。最终能力变化仍然需要放到固定游戏、固定温度的独立评测中判断。
 
-## 评测结果
+## 6. 评测结果
 
 Base、Step 40 和 Step 80 使用完全相同的评测设置：
 
@@ -436,7 +448,9 @@ Valid Unseen:    52.99% → 58.96%   +5.97 pp
 
 这组结果来自一次训练和单个评测 seed。它足够说明当前代码跑通了在线 Agentic RL 闭环，并给出了明确的正向信号；稳定结论还需要补充多 seed 训练、重复评测和更长的 checkpoint 曲线。
 
-## 我们是怎么写代码的？
+这些结果回答了“训练有没有带来提升”，而它们究竟如何从环境交互一路变成可复核的 JSONL 与图表，还需要回到代码结构中逐层展开。
+
+## 7. 我们是怎么写代码的？
 
 整套实现一共八个 Python 文件。训练链路可以先概括成：
 
@@ -579,8 +593,12 @@ admissible action rate
 | [`eval.py`](https://github.com/KMnO4-zx/llm-agent-rl-lab/blob/main/08-alfworld/eval.py) | Base/checkpoint 评测、指标聚合和逐轨迹 JSONL |
 | [`analysis.py`](https://github.com/KMnO4-zx/llm-agent-rl-lab/blob/main/08-alfworld/analysis.py) | 读取评测 summary 并绘制 checkpoint 对比图 |
 
-## 总结
+八个文件串起来后，整个实验就形成了从游戏发现、在线交互、组内信用分配到独立评测的完整闭环，最后可以回到最初的问题：这次长轨迹 Agentic RL 到底验证了什么？
+
+## 8. 总结
 
 这是目前整个系列里轨迹最长、工具调用最多、环境状态最复杂的一次 Agentic RL 实验。
 
 我们让 Qwen3.5-4B 在同一个 ALFWorld 游戏中采样 8 条独立轨迹，用终局成功与非法动作次数计算 episode reward，再通过同游戏组内的 relative advantage 和 PPO 更新 LoRA。模型需要在最多 50 次环境交互、12K 完整上下文中持续记住自己做过什么，并让最终 PDDL 状态真正满足任务条件。
+
+这也为后续把 Agentic RL 推向更长轨迹、更多工具和更复杂环境留下了清晰的起点。
