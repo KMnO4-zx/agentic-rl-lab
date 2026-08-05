@@ -7,7 +7,7 @@
 <h1><i>LLM Agent RL Lab</i></h1>
 
 <p>
-  复现和拆解前沿 LLM 强化学习算法，用更简单的代码和更低的 GPU 门槛，把 GRPO、OPD、OPSD、GSPO、DAPO、Search-R1、ReTool、Slime 等方法跑起来，方便复现。
+  复现和拆解前沿 LLM 强化学习算法，用更简单的代码和更低的 GPU 门槛，把 GRPO、OPD、OPSD、GSPO、DAPO、Search-R1、ReTool、ALFWorld、Slime 等方法跑起来，方便复现。
 </p>
 
 <p>
@@ -50,6 +50,7 @@
 | [第 5 篇](./05-retool/readme.md) | ReTool | 用 Qwen3.5-4B、PyTRIO 和本地代码沙箱复现代码交织的 Agentic RL |
 | [第 6 篇](./06-dapo/readme.md) | DAPO | 拆解四项核心改进，并记录 Dynamic Sampling 在真实训练中的时间成本 |
 | [第 7 篇](./07-gspo/readme.md) | GSPO | 将重要性比率与裁剪从 token 级提升到 sequence 级 |
+| [第 8 篇](./08-alfworld/readme.md) | ALFWorld | 用 12K 长轨迹、真实 TextWorld 环境和 group-relative advantage 训练家务 Agent |
 
 ## 快速启动
 
@@ -61,16 +62,45 @@ cd llm-agent-rl-lab
 uv sync
 ```
 
-如果只想把某个 demo 脚本拎到自己的项目里跑：
+运行第 8 篇 ALFWorld 时，需要额外安装 TextWorld 环境依赖：
 
 ```bash
-uv add "datasets>=5.0.0" "matplotlib>=3.11.0" "numpy>=2.5.1" "openai>=2.44.0" "python-dotenv>=1.2.2" "pytrio==0.2.5" "swanlab>=0.8.4" "torch>=2.12.1" "tqdm>=4.68.3"
+uv sync --extra alfworld
+```
+
+如果只想把某个 demo 脚本拎到自己的项目里跑，当前基础依赖为：
+
+```bash
+uv add \
+  "datasets>=5.0.0" \
+  "math-verify>=0.9.0" \
+  "matplotlib>=3.11.0" \
+  "modelscope>=1.38.1" \
+  "numpy>=2.5.1" \
+  "openai>=2.44.0" \
+  "python-dotenv>=1.2.2" \
+  "pytrio==0.2.6" \
+  "swanlab==0.9.2" \
+  "torch>=2.9.1" \
+  "tqdm>=4.68.3"
+```
+
+Search-R1 的 DeepSeek Search 后端使用固定源码版本：
+
+```bash
+uv add "deepseek-search @ git+https://github.com/KMnO4-zx/deepseek-search.git@6215c8dbb7347f94e9dcea6e741df5918449d6c4"
+```
+
+ALFWorld 的 optional extra 对应：
+
+```bash
+uv add --optional alfworld "alfworld==0.4.2" "spacy==3.8.13"
 ```
 
 ## Star History
 
 <div align="center">
-  <img src="./images/star-history-202683.png" alt="GitHub Star History" width="700" />
+  <img src="./images/star-history-202685.png" alt="GitHub Star History" width="700" />
 </div>
 
 ## Contributor
