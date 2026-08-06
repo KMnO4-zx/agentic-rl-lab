@@ -7,6 +7,10 @@
 <h1><i>Agentic-RL Lab</i></h1>
 
 <p>
+  <strong>中文</strong> | <a href="./README_EN.md">English</a>
+</p>
+
+<p>
   复现和拆解前沿 LLM 强化学习算法，用更简单的代码和更低的 GPU 门槛，把 GRPO、OPD、OPSD、GSPO、DAPO、Search-R1、ReTool、ALFWorld、Slime 等方法跑起来，方便复现。
 </p>
 
@@ -27,18 +31,18 @@
   <a href="https://github.com/KMnO4-zx/agentic-rl-lab/issues/13">点击查看群二维码</a>
 </p>
 
-## 这个仓库是什么？
+## 项目介绍
 
-这是一个偏实验记录和教程的仓库。我会用 [PyTRIO](https://pytrio.com) 复现一组和 LLM / Agent RL 相关的强化学习算法，主要做三件事：
+&emsp;&emsp;这是一个偏实验记录和教程的仓库。我会用 [PyTRIO](https://pytrio.com) 复现一组和 LLM / Agent RL 相关的强化学习算法，主要做三件事：
 
 1. 先把算法讲明白：它从哪篇论文来，解决什么问题，核心变量是什么。
 2. 再用可运行代码复现：数据、reward、loss、训练循环、SwanLab 记录都放在仓库里。
 3. 可能未来会做一个更友好和轻量的 Agent RL 训练框架～
 4. ***第十篇，我会做 Harness-RL 的复现和拆解。***
 
-> *选择 PyTRIO 的原因很简单，我曾很想要深度研究一下 Agentic-RL 算法，但一直受一些阻力困扰。比如：没卡、训推一体的代码复杂度、Verl 的高耦合工程代码等等。让我一直迟迟没有动手研究。PyTRIO 的出现，让我可以用更简单的代码和更低的门槛来研究 Agentic-RL 算法。仓库的全部内容我仅仅花了不到一个月时间就全部学习和复现完了。*
+> *&emsp;&emsp;选择 PyTRIO 的原因很简单，我曾很想要深度研究一下 Agentic-RL 算法，但一直受一些阻力困扰。比如：没卡、训推一体的代码复杂度、Verl 的高耦合工程代码等等。让我一直迟迟没有动手研究。PyTRIO 的出现，让我可以用更简单的代码和更低的门槛来研究 Agentic-RL 算法。仓库的全部内容我仅仅花了不到一个月时间就全部学习和复现完了。*
 
-> *我认为 PyTrio 或 Tinker 这类产品是面向未来的大模型后训练基础设施，早一点接触对算法工程师或是 Researcher 而言都是很有价值的。*
+> *&emsp;&emsp;我认为 PyTrio 或 Tinker 这类产品是面向未来的大模型后训练基础设施，早一点接触对算法工程师或是 Researcher 而言都是很有价值的。*
 
 ## 文章目录
 
@@ -57,7 +61,7 @@
 
 ## 快速启动
 
-如果是直接 clone 这个仓库：
+&emsp;&emsp;如果是直接 clone 这个仓库：
 
 ```bash
 git clone https://github.com/KMnO4-zx/agentic-rl-lab.git
@@ -65,13 +69,13 @@ cd agentic-rl-lab
 uv sync
 ```
 
-运行第 8 篇 ALFWorld 时，需要额外安装 TextWorld 环境依赖：
+&emsp;&emsp;运行第 8 篇 ALFWorld 时，需要额外安装 TextWorld 环境依赖：
 
 ```bash
 uv sync --extra alfworld
 ```
 
-如果只想把某个 demo 脚本拎到自己的项目里跑，当前基础依赖为：
+&emsp;&emsp;如果只想把某个 demo 脚本拎到自己的项目里跑，当前基础依赖为：
 
 ```bash
 uv add \
@@ -88,13 +92,13 @@ uv add \
   "tqdm>=4.68.3"
 ```
 
-Search-R1 的 DeepSeek Search 后端使用固定源码版本：
+&emsp;&emsp;Search-R1 的 DeepSeek Search 后端使用固定源码版本：
 
 ```bash
 uv add "deepseek-search @ git+https://github.com/KMnO4-zx/deepseek-search.git@6215c8dbb7347f94e9dcea6e741df5918449d6c4"
 ```
 
-ALFWorld 的 optional extra 对应：
+&emsp;&emsp;ALFWorld 的 optional extra 对应：
 
 ```bash
 uv add --optional alfworld "alfworld==0.4.2" "spacy==3.8.13"
