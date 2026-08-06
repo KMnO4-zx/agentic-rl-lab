@@ -24,8 +24,8 @@ SEARCH_BACKENDS = ("deepseek", "wikipedia", "zhihu")
 SEARCH_ENDPOINT = "https://developer.zhihu.com/api/v1/content/global_search"
 WIKIPEDIA_SEARCH_ENDPOINT = "https://en.wikipedia.org/w/api.php"
 WIKIPEDIA_USER_AGENT = (
-    "llm-agent-rl-lab/0.1 "
-    "(https://github.com/KMnO4-zx/llm-agent-rl-lab)"
+    "agentic-rl-lab/0.1 "
+    "(https://github.com/KMnO4-zx/agentic-rl-lab)"
 )
 DEFAULT_SEARCH_CONCURRENCY = {"deepseek": 16, "wikipedia": 3, "zhihu": 1}
 DEFAULT_SEARCH_TIMEOUT = {"deepseek": 60.0, "wikipedia": 15.0, "zhihu": 15.0}

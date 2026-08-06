@@ -99,7 +99,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--save-every-steps", type=int, default=1000, help="每多少 step 同时保存 training state 和 sampler 权重；0 表示不按 step 保存")
 
     parser.add_argument("--swanlab", action=argparse.BooleanOptionalAction, default=True, help="是否启用 SwanLab 记录")
-    parser.add_argument("--swanlab-project", default="llm-agent-rl-lab", help="SwanLab 项目名")
+    parser.add_argument("--swanlab-project", default="agentic-rl-lab", help="SwanLab 项目名")
     parser.add_argument("--swanlab-workspace", default=None, help="SwanLab workspace；不传则使用默认 workspace")
     parser.add_argument(
         "--swanlab-mode",

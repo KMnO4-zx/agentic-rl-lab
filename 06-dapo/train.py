@@ -570,7 +570,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--swanlab-project",
-        default="llm-agent-rl-lab-dapo",
+        default="agentic-rl-lab-dapo",
         help="SwanLab 项目名称。",
     )
     parser.add_argument(

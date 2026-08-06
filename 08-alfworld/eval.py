@@ -135,7 +135,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--swanlab-project",
-        default="llm-agent-rl-lab-alfworld",
+        default="agentic-rl-lab-alfworld",
     )
     parser.add_argument(
         "--run-name",

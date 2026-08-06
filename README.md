@@ -1,10 +1,10 @@
 <div align="center">
 
-<a href="https://github.com/KMnO4-zx/llm-agent-rl-lab">
-  <img src="images/llm-agent-rl-lab.png" alt="LLM Agent RL Lab" width=100% />
+<a href="https://github.com/KMnO4-zx/agentic-rl-lab">
+  <img src="images/agentic-rl-lab.png" alt="Agentic-RL Lab" width=100% />
 </a>
 
-<h1><i>LLM Agent RL Lab</i></h1>
+<h1><i>Agentic-RL Lab</i></h1>
 
 <p>
   复现和拆解前沿 LLM 强化学习算法，用更简单的代码和更低的 GPU 门槛，把 GRPO、OPD、OPSD、GSPO、DAPO、Search-R1、ReTool、ALFWorld、Slime 等方法跑起来，方便复现。
@@ -16,7 +16,7 @@
   <a href="https://swanlab.cn/@kmno4/llm-agent-rl-lab/overview"><img alt="SwanLab Experiments" src="https://img.shields.io/badge/Tracking_in-SwanLab-C4F042?style=flat&amp;labelColor=000000" /></a>
   <a href="https://www.zhihu.com/people/feng-qi-xia-pian"><img alt="Zhihu" src="https://img.shields.io/badge/Zhihu-知乎-4362f6?style=flat" /></a>
   <a href="https://www.xiaohongshu.com/user/profile/63c2055e000000002502c58c"><img alt="Rednote" src="https://img.shields.io/badge/Rednote-小红书-e93c49?style=flat" /></a>
-  <a href="https://github.com/KMnO4-zx/llm-agent-rl-lab"><img alt="visitors" src="https://komarev.com/ghpvc/?username=KMnO4-zx-llm-agent-rl-lab&amp;label=visitors&amp;color=1283c3&amp;style=flat" /></a>
+  <a href="https://github.com/KMnO4-zx/agentic-rl-lab"><img alt="visitors" src="https://komarev.com/ghpvc/?username=KMnO4-zx-agentic-rl-lab&amp;label=visitors&amp;color=1283c3&amp;style=flat" /></a>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.13%2B-306998?style=flat" />
 </p>
 
@@ -24,7 +24,7 @@
 
 <p align="center">
   💬 <strong>微信交流群：</strong>
-  <a href="https://github.com/KMnO4-zx/llm-agent-rl-lab/issues/13">点击查看群二维码</a>
+  <a href="https://github.com/KMnO4-zx/agentic-rl-lab/issues/13">点击查看群二维码</a>
 </p>
 
 ## 这个仓库是什么？
@@ -57,8 +57,8 @@
 如果是直接 clone 这个仓库：
 
 ```bash
-git clone https://github.com/KMnO4-zx/llm-agent-rl-lab.git
-cd llm-agent-rl-lab
+git clone https://github.com/KMnO4-zx/agentic-rl-lab.git
+cd agentic-rl-lab
 uv sync
 ```
 
@@ -106,8 +106,8 @@ uv add --optional alfworld "alfworld==0.4.2" "spacy==3.8.13"
 ## Contributor
 
 <div align=center style="margin-top: 30px;">
-  <a href="https://github.com/KMnO4-zx/llm-agent-rl-lab/graphs/contributors">
-    <img src="https://contrib.rocks/image?repo=KMnO4-zx/llm-agent-rl-lab" />
+  <a href="https://github.com/KMnO4-zx/agentic-rl-lab/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=KMnO4-zx/agentic-rl-lab" />
   </a>
 </div>
 

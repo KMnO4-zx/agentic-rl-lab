@@ -7,12 +7,12 @@
 <div align="center">
   <a href="https://www.zhihu.com/people/feng-qi-xia-pian" target="_blank"><img alt="Zhihu" src="https://img.shields.io/badge/Zhihu-知乎-4362f6"></a>
   <a href="https://www.xiaohongshu.com/user/profile/63c2055e000000002502c58c" target="_blank"><img alt="Rednote" src="https://img.shields.io/badge/Rednote-小红书-e93c49"></a>
-  <a href="https://github.com/KMnO4-zx/llm-agent-rl-lab"><img alt="visitors" src="https://komarev.com/ghpvc/?username=KMnO4-zx-llm-agent-rl-lab-search-r1&amp;label=visitors&amp;color=1283c3&amp;style=flat"></a>
+  <a href="https://github.com/KMnO4-zx/agentic-rl-lab"><img alt="visitors" src="https://komarev.com/ghpvc/?username=KMnO4-zx-agentic-rl-lab-search-r1&amp;label=visitors&amp;color=1283c3&amp;style=flat"></a>
 </div>
 
 > **代码与复现资源**
 >
-> - 本文完整代码：[KMnO4-zx/llm-agent-rl-lab/03-search-r1](https://github.com/KMnO4-zx/llm-agent-rl-lab/tree/main/03-search-r1)
+> - 本文完整代码：[KMnO4-zx/agentic-rl-lab/03-search-r1](https://github.com/KMnO4-zx/agentic-rl-lab/tree/main/03-search-r1)
 > - Search-R1 论文：[Search-R1: Training LLMs to Reason and Leverage Search Engines with Reinforcement Learning](https://arxiv.org/abs/2503.09516)
 > - Search-R1 官方实现：[PeterGriffinJin/Search-R1](https://github.com/PeterGriffinJin/Search-R1)
 > - DeepSeek Search 工具：[KMnO4-zx/deepseek-search](https://github.com/KMnO4-zx/deepseek-search)
@@ -28,9 +28,9 @@
 
 前面三篇分别讲了：
 
-- [第 0 篇：强化学习基础——损失函数](https://github.com/KMnO4-zx/llm-agent-rl-lab/blob/main/00-loss-function/readme.md)
-- [第 1 篇：GRPO](https://github.com/KMnO4-zx/llm-agent-rl-lab/blob/main/01-grpo/readme.md)
-- [第 2 篇：OPD](https://github.com/KMnO4-zx/llm-agent-rl-lab/blob/main/02-opd/readme.md)
+- [第 0 篇：强化学习基础——损失函数](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/00-loss-function/readme.md)
+- [第 1 篇：GRPO](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/01-grpo/readme.md)
+- [第 2 篇：OPD](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/02-opd/readme.md)
 
 这一次终于轮到我一直很想做的 Agentic RL：让模型在回答问题的过程中，自己决定什么时候搜索、搜索什么、看到搜索结果后要不要继续搜，最后再给出答案。
 
@@ -260,7 +260,7 @@ training_client.forward_backward(
 training_client.optim_step(adam_params).result()
 ```
 
-完整训练循环在 [`train.py`](https://github.com/KMnO4-zx/llm-agent-rl-lab/blob/main/03-search-r1/train.py)。
+完整训练循环在 [`train.py`](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/03-search-r1/train.py)。
 
 这样一来，我可以直接使用远端训练服务，也可以让 rollout 和 trainer 保持清晰分工。对这类“生成和工具调用耗时较长、backward 时间相对较短”的任务，按实际训练 Token 使用远端训练服务会自然很多。
 
@@ -378,7 +378,7 @@ DeepSeek run 里的 degenerate group 比例也更高。这个指标只表示同�
 
 ## Search-R1 的训练闭环详细拆解
 
-到这里，如果只想知道 Search-R1 是什么，其实已经够了。想直接跑代码的朋友可以直接去 GitHub 仓库 ：https://github.com/KMnO4-zx/llm-agent-rl-lab
+到这里，如果只想知道 Search-R1 是什么，其实已经够了。想直接跑代码的朋友可以直接去 GitHub 仓库 ：https://github.com/KMnO4-zx/agentic-rl-lab
 
 后面这一部分会按真实代码，把一次训练 step 拆开。完整目录如下：
 
@@ -399,7 +399,7 @@ DeepSeek run 里的 degenerate group 比例也更高。这个指标只表示同�
 
 数据来自 Search-R1 官方公开的 [`PeterJinGo/nq_hotpotqa_train`](https://huggingface.co/datasets/PeterJinGo/nq_hotpotqa_train)，我们通过 ModelScope 镜像下载固定版本。
 
-准备脚本在 [`prepare_data.py`](https://github.com/KMnO4-zx/llm-agent-rl-lab/blob/main/03-search-r1/prepare_data.py)。
+准备脚本在 [`prepare_data.py`](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/03-search-r1/prepare_data.py)。
 
 训练集包含：
 
@@ -428,7 +428,7 @@ DeepSeek run 里的 degenerate group 比例也更高。这个指标只表示同�
 
 ## 第二步：把搜索声明成模型工具
 
-工具协议在 [`protocol.py`](https://github.com/KMnO4-zx/llm-agent-rl-lab/blob/main/03-search-r1/protocol.py)。
+工具协议在 [`protocol.py`](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/03-search-r1/protocol.py)。
 
 搜索工具的 schema 很短：
 
@@ -466,7 +466,7 @@ prompt_tokens = tokenizer.apply_chat_template(
 
 这里无需靠 stop word 猜模型是否想搜索。模型会生成结构化的 `<tool_call>`，`protocol.py` 再把它解析成 query；环境执行真实搜索后，以 `role="tool"` 把 observation 写回对话。
 
-两个搜索后端都实现在 [`search.py`](https://github.com/KMnO4-zx/llm-agent-rl-lab/blob/main/03-search-r1/search.py)，训练和评测通过同一个工厂函数创建客户端：
+两个搜索后端都实现在 [`search.py`](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/03-search-r1/search.py)，训练和评测通过同一个工厂函数创建客户端：
 
 ```python
 search_client = create_search_client(
@@ -506,7 +506,7 @@ query_i 不同
 
 ![](<./images/Group Rollout · Shared Root and Diverged Contexts.png>)
 
-完整状态机在 [`rollout.py`](https://github.com/KMnO4-zx/llm-agent-rl-lab/blob/main/03-search-r1/rollout.py)。核心结构是：
+完整状态机在 [`rollout.py`](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/03-search-r1/rollout.py)。核心结构是：
 
 ```text
 第一轮：
@@ -530,7 +530,7 @@ assistant generation
 
 ## 第四步：只用最终答案计算 Reward
 
-Reward 实现在 [`reward.py`](https://github.com/KMnO4-zx/llm-agent-rl-lab/blob/main/03-search-r1/reward.py)。
+Reward 实现在 [`reward.py`](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/03-search-r1/reward.py)。
 
 模型最终必须留下且只留下一个非空答案：
 
@@ -572,7 +572,7 @@ def score_answer(text: str, references: list[str]) -> RewardResult:
 A_i = r_i - \operatorname{mean}(r_1, r_2, \ldots, r_8)
 ```
 
-代码在 [`rollout.py`](https://github.com/KMnO4-zx/llm-agent-rl-lab/blob/main/03-search-r1/rollout.py)：
+代码在 [`rollout.py`](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/03-search-r1/rollout.py)：
 
 ```python
 mean_reward = sum(item.reward for item in group) / len(group)
@@ -622,7 +622,7 @@ system / user / tool observation: advantage = 0
 assistant tool call / final answer: advantage = trajectory_advantage
 ```
 
-完整实现位于 [`train.py`](https://github.com/KMnO4-zx/llm-agent-rl-lab/blob/main/03-search-r1/train.py) 的 `build_datum()`。
+完整实现位于 [`train.py`](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/03-search-r1/train.py) 的 `build_datum()`。
 
 核心逻辑如下：
 
@@ -691,7 +691,7 @@ micro-batch items × max_sequence_length ≤ 64,000
 
 PyTRIO 服务端对每次 `forward_backward` 的样本取 mean，因此不同大小的 micro-batch 还要按照 `n_k / N` 缩放 advantage，保证累积结果等价于完整 logical batch 的全局均值。
 
-这部分代码都在 [`train.py`](https://github.com/KMnO4-zx/llm-agent-rl-lab/blob/main/03-search-r1/train.py) 的 `pack_micro_batches()` 和 `weight_micro_batch_for_global_mean()` 中。
+这部分代码都在 [`train.py`](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/03-search-r1/train.py) 的 `pack_micro_batches()` 和 `weight_micro_batch_for_global_mean()` 中。
 
 ## 如何用 20 step 跑出效果？
 
@@ -700,8 +700,8 @@ PyTRIO 服务端对每次 `forward_backward` 的样本取 mean，因此不同大
 ### 1. 安装项目并登录
 
 ```bash
-git clone https://github.com/KMnO4-zx/llm-agent-rl-lab.git
-cd llm-agent-rl-lab
+git clone https://github.com/KMnO4-zx/agentic-rl-lab.git
+cd agentic-rl-lab
 
 uv sync
 trio login
@@ -859,7 +859,7 @@ uv run python eval.py \
 
 如果只想先检查整条链路，可以添加 `--limit 20`，再决定是否运行固定 70 题评测。
 
-评测代码在 [`eval.py`](https://github.com/KMnO4-zx/llm-agent-rl-lab/blob/main/03-search-r1/eval.py)。它对 Base 和 checkpoint 使用相同的 tokenizer、工具协议、搜索环境、轨迹限制和 EM 规则。
+评测代码在 [`eval.py`](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/03-search-r1/eval.py)。它对 Base 和 checkpoint 使用相同的 tokenizer、工具协议、搜索环境、轨迹限制和 EM 规则。
 
 ### 6. 绘制评测结果
 
@@ -875,7 +875,7 @@ uv run python analyse.py
 uv run python analyse.py --preset deepseek
 ```
 
-绘图代码在 [`analyse.py`](https://github.com/KMnO4-zx/llm-agent-rl-lab/blob/main/03-search-r1/analyse.py)，它会直接读取每个 JSONL 末尾的 `summary.metrics`。DeepSeek preset 还会检查两份结果是否都来自固定 70 题、相同后端和相同搜索配置，避免把不一致的实验画到同一张图里。
+绘图代码在 [`analyse.py`](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/03-search-r1/analyse.py)，它会直接读取每个 JSONL 末尾的 `summary.metrics`。DeepSeek preset 还会检查两份结果是否都来自固定 70 题、相同后端和相同搜索配置，避免把不一致的实验画到同一张图里。
 
 ## 训练时最应该看哪些指标？
 
@@ -957,6 +957,6 @@ Search-R1 看起来像一个复杂的 Agent 训练系统，但拆开以后，它
 
 ### 本文实现
 
-1. [Search-R1 PyTRIO 完整代码](https://github.com/KMnO4-zx/llm-agent-rl-lab/tree/main/03-search-r1)
+1. [Search-R1 PyTRIO 完整代码](https://github.com/KMnO4-zx/agentic-rl-lab/tree/main/03-search-r1)
 2. [PyTRIO 文档](https://docs.pytrio.cn/)
 3. [SwanLab 文档](https://docs.swanlab.cn/)
