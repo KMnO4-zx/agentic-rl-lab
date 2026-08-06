@@ -4,7 +4,7 @@
   <img src="images/agentic-rl-lab.png" alt="Agentic-RL Lab" width=100% />
 </a>
 
-<h1><i>Agentic-RL Lab</i></h1>
+<br>
 
 <p>
   <strong>中文</strong> | <a href="./README_EN.md">English</a>
