@@ -134,7 +134,7 @@ def parse_args() -> GRPOConfig:
         default="online",
         help="SwanLab 记录模式：online 上传到云端，disabled 完全关闭日志",
     )
-    parser.add_argument("--swanlab-project", default="agentic-rl-lab", help="SwanLab project")
+    parser.add_argument("--swanlab-project", default="agentic-rl-lab-grpo", help="SwanLab project")
     args = parser.parse_args()
 
     if args.cispo_clip_low_threshold < 0:

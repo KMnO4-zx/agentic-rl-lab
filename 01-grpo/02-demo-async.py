@@ -161,7 +161,7 @@ def parse_args() -> GRPOConfig:
     )
     parser.add_argument(
         "--swanlab-project",
-        default="agentic-rl-lab",
+        default="agentic-rl-lab-grpo",
         help="SwanLab project",
     )
     args = parser.parse_args()

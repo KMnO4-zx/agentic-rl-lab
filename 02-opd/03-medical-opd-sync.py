@@ -165,7 +165,7 @@ def parse_args() -> argparse.Namespace:
         help="每多少 step 保存一次 state + sampler weights；0 表示不保存中间 checkpoint，最终 step 仍保存",
     )
     parser.add_argument("--swanlab", action=argparse.BooleanOptionalAction, default=True, help="是否启用 SwanLab")
-    parser.add_argument("--swanlab-project", default="agentic-rl-lab", help="SwanLab 项目名")
+    parser.add_argument("--swanlab-project", default="agentic-rl-lab-opd", help="SwanLab 项目名")
     parser.add_argument("--swanlab-workspace", default=None, help="SwanLab workspace")
     parser.add_argument(
         "--swanlab-mode",
