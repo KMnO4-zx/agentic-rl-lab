@@ -13,6 +13,51 @@ resolution-markers = [
 ]
 
 [[package]]
+name = "agentic-rl-lab"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "datasets" },
+    { name = "deepseek-search" },
+    { name = "math-verify" },
+    { name = "matplotlib" },
+    { name = "modelscope" },
+    { name = "numpy" },
+    { name = "openai" },
+    { name = "python-dotenv" },
+    { name = "pytrio" },
+    { name = "swanlab" },
+    { name = "torch", version = "2.13.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32'" },
+    { name = "torch", version = "2.13.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'emscripten' or sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "tqdm" },
+]
+
+[package.optional-dependencies]
+alfworld = [
+    { name = "alfworld" },
+    { name = "spacy" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "alfworld", marker = "extra == 'alfworld'", specifier = "==0.4.2" },
+    { name = "datasets", specifier = ">=5.0.0" },
+    { name = "deepseek-search", git = "https://github.com/KMnO4-zx/deepseek-search.git?rev=6215c8dbb7347f94e9dcea6e741df5918449d6c4" },
+    { name = "math-verify", specifier = ">=0.9.0" },
+    { name = "matplotlib", specifier = ">=3.11.0" },
+    { name = "modelscope", specifier = ">=1.38.1" },
+    { name = "numpy", specifier = ">=2.5.1" },
+    { name = "openai", specifier = ">=2.44.0" },
+    { name = "python-dotenv", specifier = ">=1.2.2" },
+    { name = "pytrio", specifier = "==0.2.7" },
+    { name = "spacy", marker = "extra == 'alfworld'", specifier = "==3.8.13" },
+    { name = "swanlab", specifier = "==0.9.2" },
+    { name = "torch", specifier = ">=2.9.1", index = "https://download.pytorch.org/whl/cpu" },
+    { name = "tqdm", specifier = ">=4.68.3" },
+]
+provides-extras = ["alfworld"]
+
+[[package]]
 name = "aiohappyeyeballs"
 version = "2.7.1"
 source = { registry = "https://pypi.org/simple" }
@@ -853,51 +898,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/30/75/456da2da05f6380ea
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e9/61/f75cd1fa54d8434276126034aed54dd120747de9a8fa013cdd79545ccbeb/latex2sympy2_extended-1.11.0-py3-none-any.whl", hash = "sha256:aebb77d52ce269e25028e4bea89ddb14d242ba36bcf7b636496fb5fd9728d234", size = 209050, upload-time = "2026-01-10T01:43:19.458Z" },
 ]
-
-[[package]]
-name = "agentic-rl-lab"
-version = "0.1.0"
-source = { virtual = "." }
-dependencies = [
-    { name = "datasets" },
-    { name = "deepseek-search" },
-    { name = "math-verify" },
-    { name = "matplotlib" },
-    { name = "modelscope" },
-    { name = "numpy" },
-    { name = "openai" },
-    { name = "python-dotenv" },
-    { name = "pytrio" },
-    { name = "swanlab" },
-    { name = "torch", version = "2.13.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32'" },
-    { name = "torch", version = "2.13.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'emscripten' or sys_platform == 'linux' or sys_platform == 'win32'" },
-    { name = "tqdm" },
-]
-
-[package.optional-dependencies]
-alfworld = [
-    { name = "alfworld" },
-    { name = "spacy" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "alfworld", marker = "extra == 'alfworld'", specifier = "==0.4.2" },
-    { name = "datasets", specifier = ">=5.0.0" },
-    { name = "deepseek-search", git = "https://github.com/KMnO4-zx/deepseek-search.git?rev=6215c8dbb7347f94e9dcea6e741df5918449d6c4" },
-    { name = "math-verify", specifier = ">=0.9.0" },
-    { name = "matplotlib", specifier = ">=3.11.0" },
-    { name = "modelscope", specifier = ">=1.38.1" },
-    { name = "numpy", specifier = ">=2.5.1" },
-    { name = "openai", specifier = ">=2.44.0" },
-    { name = "python-dotenv", specifier = ">=1.2.2" },
-    { name = "pytrio", specifier = "==0.2.6" },
-    { name = "spacy", marker = "extra == 'alfworld'", specifier = "==3.8.13" },
-    { name = "swanlab", specifier = "==0.9.2" },
-    { name = "torch", specifier = ">=2.9.1", index = "https://download.pytorch.org/whl/cpu" },
-    { name = "tqdm", specifier = ">=4.68.3" },
-]
-provides-extras = ["alfworld"]
 
 [[package]]
 name = "markdown-it-py"
@@ -1871,7 +1871,7 @@ wheels = [
 
 [[package]]
 name = "pytrio"
-version = "0.2.6"
+version = "0.2.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -1884,9 +1884,9 @@ dependencies = [
     { name = "tomli" },
     { name = "transformers" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6a/55/35c7ef8199f0b827fcaf022bb88cdbfe8459a5a9be9b76517b8316ced337/pytrio-0.2.6.tar.gz", hash = "sha256:43cffca495c6ed9fd560c91edbc078c1d29f0d611815e07f2671d1b532224528", size = 113546, upload-time = "2026-08-02T07:33:05.64Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6f/7c/c98d8c689efe6a175878296d30ae06d2460c98ddf0f2d93741188477d8ca/pytrio-0.2.7.tar.gz", hash = "sha256:1894ea6318a0ca8c1aef51fa5973f0b7e3e30acba4d03e12a40a42996c2f80f9", size = 122073, upload-time = "2026-08-08T14:07:33.729Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/40/18/7729ae0832d3d528b309029c84a922666f1a2770574b79278bb93ebc4d9a/pytrio-0.2.6-py3-none-any.whl", hash = "sha256:4bfeda4403fdf9180a81d9a4cca2fafd320d6ca9cb175af4cc8ac722ef3fdb6b", size = 176268, upload-time = "2026-08-02T07:33:04.127Z" },
+    { url = "https://files.pythonhosted.org/packages/ff/f5/b950a6da84ed54a1185d6a04f8b25d1fe7631066ca53d0935582387e3cd5/pytrio-0.2.7-py3-none-any.whl", hash = "sha256:2fb5f5aba4b971e5423f4f9832ac4ae7231eca675cfd724117c532fa10aa7b95", size = 187913, upload-time = "2026-08-08T14:07:32.452Z" },
 ]
 
 [[package]]
