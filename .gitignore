@@ -238,3 +238,9 @@ __marimo__/
 06-dapo/eval-results/
 07-gspo/datasets/
 07-gspo/eval-results/
+09-vision-grpo/datasets/
+09-vision-grpo/eval-results*.json
+
+# Local experiment tracking artifacts
+swanlog/
+*.swanlab
