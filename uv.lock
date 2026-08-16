@@ -50,7 +50,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=2.5.1" },
     { name = "openai", specifier = ">=2.44.0" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
-    { name = "pytrio", specifier = "==0.2.7" },
+    { name = "pytrio", specifier = "==0.2.8" },
     { name = "spacy", marker = "extra == 'alfworld'", specifier = "==3.8.13" },
     { name = "swanlab", specifier = "==0.9.2" },
     { name = "torch", specifier = ">=2.9.1", index = "https://download.pytorch.org/whl/cpu" },
@@ -1873,7 +1873,7 @@ wheels = [
 
 [[package]]
 name = "pytrio"
-version = "0.2.7"
+version = "0.2.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -1886,9 +1886,9 @@ dependencies = [
     { name = "tomli" },
     { name = "transformers" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6f/7c/c98d8c689efe6a175878296d30ae06d2460c98ddf0f2d93741188477d8ca/pytrio-0.2.7.tar.gz", hash = "sha256:1894ea6318a0ca8c1aef51fa5973f0b7e3e30acba4d03e12a40a42996c2f80f9", size = 122073, upload-time = "2026-08-08T14:07:33.729Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9b/70/6a919fbb931ba5f13fe54b23970b7ad7913c4177dd9c768ccd658dfe9593/pytrio-0.2.8.tar.gz", hash = "sha256:ad01a587f02d0afd91438cae9097efdc27e9e5b5df634e959c58e5dc415cf56f", size = 129869, upload-time = "2026-08-15T13:02:37.635Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ff/f5/b950a6da84ed54a1185d6a04f8b25d1fe7631066ca53d0935582387e3cd5/pytrio-0.2.7-py3-none-any.whl", hash = "sha256:2fb5f5aba4b971e5423f4f9832ac4ae7231eca675cfd724117c532fa10aa7b95", size = 187913, upload-time = "2026-08-08T14:07:32.452Z" },
+    { url = "https://files.pythonhosted.org/packages/33/4b/2541679555ce131b55a339d98ef4ea9c00f4080339daca07d077d7a53722/pytrio-0.2.8-py3-none-any.whl", hash = "sha256:129764d1b5f9cf095be273e9e7a53f384bd77d27c0feafb1551b1401d43ee834", size = 193900, upload-time = "2026-08-15T13:02:36.277Z" },
 ]
 
 [[package]]
