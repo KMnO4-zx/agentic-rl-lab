@@ -240,7 +240,7 @@ __marimo__/
 07-gspo/eval-results/
 09-vision-grpo/datasets/
 09-vision-grpo/eval-results*.json
-
+09-tempo/datasets/
 # Local experiment tracking artifacts
 swanlog/
 *.swanlab
