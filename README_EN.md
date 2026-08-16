@@ -11,7 +11,7 @@
 </p>
 
 <p>
-  Reproduce and dissect frontier LLM reinforcement learning algorithms — GRPO, OPD, OPSD, GSPO, DAPO, Search-R1, ReTool, ALFWorld, Vision GRPO, Slime and more — with simpler code and a lower GPU barrier.
+  Reproduce and dissect frontier LLM reinforcement learning algorithms — GRPO, OPD, OPSD, GSPO, DAPO, Search-R1, ReTool, ALFWorld, Vision GRPO, TEMPO, Slime and more — with simpler code and a lower GPU barrier.
 </p>
 
 <p>
@@ -59,6 +59,7 @@ This is a lab notebook and tutorial-style repository. I use [PyTRIO](https://pyt
 | [Ch. 7](./07-gspo/readme.md) | GSPO | Lift the importance ratio and clipping from the token level to the sequence level |
 | [Ch. 8](./08-alfworld/readme.md) | ALFWorld | Train a household agent with 12K-token long trajectories, a real TextWorld environment, and group-relative advantage |
 | [Ch. 9](./09-vision-grpo/readme.md) | Vision GRPO | Add image inputs on GeoQA and train Qwen3.5-4B to solve geometry multiple-choice questions with rule-based rewards |
+| [Ch. 9](./09-tempo/readme.md) | TEMPO | Algorithm-level reproduction of macro-step optimization with a generative critic |
 
 ## Quick Start
 

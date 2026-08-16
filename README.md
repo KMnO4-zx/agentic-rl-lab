@@ -59,7 +59,7 @@
 | [第 7 篇](./07-gspo/readme.md) | GSPO | 将重要性比率与裁剪从 token 级提升到 sequence 级 |
 | [第 8 篇](./08-alfworld/readme.md) | ALFWorld | 用 12K 长轨迹、真实 TextWorld 环境和 group-relative advantage 训练家务 Agent |
 | [第 9 篇](./09-vision-grpo/readme.md) | Vision GRPO | 在 GeoQA 上接入图片输入，解决几何数学题 |
-| [第 9.2 篇](./09-tempo/readme.md) | TEMPO | 算法级复现 macro-step 优化与生成式 critic：切小段轨迹，用会推理的 V̂ 补齐截断尾部 |
+| [第 9 篇](./09-tempo/readme.md) | TEMPO | 算法级复现 macro-step 优化与生成式 critic |
 
 ## 快速启动
 
