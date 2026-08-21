@@ -27,6 +27,7 @@ alfworld = [
 [tool.uv.sources]
 # 本项目本地只做数据与张量处理；训练和采样由远程 PyTRIO 服务执行。
 torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
 deepseek-search = { git = "https://github.com/KMnO4-zx/deepseek-search.git", rev = "6215c8dbb7347f94e9dcea6e741df5918449d6c4" }
 
 [[tool.uv.index]]
