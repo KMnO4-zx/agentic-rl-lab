@@ -54,6 +54,7 @@ htmlcov/
 09-AgentOPSD/eval_results/
 09-AgentOPSD/train_results/
 09-AgentOPSD/analysis_results/
+09-AgentOPSD/xiaohongshu.md
 nosetests.xml
 coverage.xml
 *.cover
