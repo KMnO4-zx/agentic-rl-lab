@@ -11,7 +11,7 @@
 </p>
 
 <p>
-  Reproduce and dissect frontier LLM reinforcement learning algorithms — GRPO, OPD, OPSD, GSPO, DAPO, Search-R1, ReTool, ALFWorld, Vision GRPO, TEMPO, Slime and more — with simpler code and a lower GPU barrier.
+  Reproduce and dissect frontier LLM reinforcement learning algorithms — GRPO, OPD, OPSD, GSPO, DAPO, Search-R1, ReTool, ALFWorld, Vision GRPO, TEMPO, AgentOPSD, Slime and more — with simpler code and a lower GPU barrier.
 </p>
 
 <p>
@@ -60,6 +60,7 @@ This is a lab notebook and tutorial-style repository. I use [PyTRIO](https://pyt
 | [Ch. 8](./08-alfworld/readme.md) | ALFWorld | Train a household agent with 12K-token long trajectories, a real TextWorld environment, and group-relative advantage |
 | [Ch. 9](./09-vision-grpo/readme.md) | Vision GRPO | Add image inputs on GeoQA and train Qwen3.5-4B to solve geometry multiple-choice questions with rule-based rewards |
 | [Ch. 9](./09-tempo/readme.md) | TEMPO | Algorithm-level reproduction of macro-step optimization with a generative critic |
+| [Ch. 9](./09-AgentOPSD/readme.md) | AgentOPSD | Use a skill-guided Self-Teacher for turn-level credit assignment |
 
 ## Quick Start
 
@@ -71,7 +72,7 @@ cd agentic-rl-lab
 uv sync
 ```
 
-To run Chapter 8 (ALFWorld), you also need the TextWorld environment dependencies:
+To run the ALFWorld, TEMPO, or AgentOPSD chapters, you also need the TextWorld environment dependencies:
 
 ```bash
 uv sync --extra alfworld
@@ -88,7 +89,7 @@ uv add \
   "numpy>=2.5.1" \
   "openai>=2.44.0" \
   "python-dotenv>=1.2.2" \
-  "pytrio==0.2.7" \
+  "pytrio==0.2.8" \
   "swanlab==0.9.2" \
   "torch>=2.9.1" \
   "torchvision>=0.27.1" \

@@ -11,7 +11,7 @@
 </p>
 
 <p>
-  复现和拆解前沿 LLM 强化学习算法，用更简单的代码和更低的 GPU 门槛，把 GRPO、OPD、OPSD、GSPO、DAPO、Search-R1、ReTool、ALFWorld、Vision GRPO、TEMPO、Slime 等方法跑起来，方便复现。
+  复现和拆解前沿 LLM 强化学习算法，用更简单的代码和更低的 GPU 门槛，把 GRPO、OPD、OPSD、GSPO、DAPO、Search-R1、ReTool、ALFWorld、Vision GRPO、TEMPO、AgentOPSD、Slime 等方法跑起来，方便复现。
 </p>
 
 <p>
@@ -60,6 +60,7 @@
 | [第 8 篇](./08-alfworld/readme.md) | ALFWorld | 用 12K 长轨迹、真实 TextWorld 环境和 group-relative advantage 训练家务 Agent |
 | [第 9 篇](./09-vision-grpo/readme.md) | Vision GRPO | 在 GeoQA 上接入图片输入，解决几何数学题 |
 | [第 9 篇](./09-tempo/readme.md) | TEMPO | 算法级复现 macro-step 优化与生成式 critic |
+| [第 9 篇](./09-AgentOPSD/readme.md) | AgentOPSD | 用带 Skill 的 Self-Teacher 分配 turn-level credit |
 
 ## 快速启动
 
@@ -71,7 +72,7 @@ cd agentic-rl-lab
 uv sync
 ```
 
-&emsp;&emsp;运行第 8 篇 ALFWorld 时，需要额外安装 TextWorld 环境依赖：
+&emsp;&emsp;运行 ALFWorld、TEMPO 或 AgentOPSD 章节时，需要额外安装 TextWorld 环境依赖：
 
 ```bash
 uv sync --extra alfworld
@@ -88,7 +89,7 @@ uv add \
   "numpy>=2.5.1" \
   "openai>=2.44.0" \
   "python-dotenv>=1.2.2" \
-  "pytrio==0.2.7" \
+  "pytrio==0.2.8" \
   "swanlab==0.9.2" \
   "torch>=2.9.1" \
   "torchvision>=0.27.1" \
