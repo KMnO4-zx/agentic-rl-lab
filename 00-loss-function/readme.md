@@ -72,7 +72,7 @@ PPO 是 clip objective。
 CISPO 是 clip ratio，然后把这个 ratio 当成固定系数，去乘 `logprob * advantage`。
 
 ```math
-\mathcal{L}_{\text{CISPO}}(\theta) = \mathbb{E}_{x \sim q}\left[\textbf{sg}\left( \text{clip}\left(\frac{p_\theta(x)}{q(x)}, 1-\epsilon_{\text{low}}, 1+\epsilon_{\text{high}}\right) \right) \cdot \log p_\theta(x) \cdot A(x)\right]
+\mathcal{L}_{\text{CISPO}}(\theta) = -\mathbb{E}_{x \sim q}\left[\textbf{sg}\left( \text{clip}\left(\frac{p_\theta(x)}{q(x)}, 1-\epsilon_{\text{low}}, 1+\epsilon_{\text{high}}\right) \right) \cdot \log p_\theta(x) \cdot A(x)\right]
 ```
 
 这里最关键的是 `detach`。它表示 clipped ratio 不再参与梯度回传，只作为一个固定权重。真正被优化的是 `target_logprob`。
