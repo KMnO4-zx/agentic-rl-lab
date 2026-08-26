@@ -111,7 +111,7 @@ uv add --optional alfworld "alfworld==0.4.2" "spacy==3.8.13"
 ## Star History
 
 <div align="center">
-  <img src="./images/star-history-202685.png" alt="GitHub Star History" width="700" />
+  <img src="./images/star-history-2026826.png" alt="GitHub Star History" width="700" />
 </div>
 
 ## Contributor
