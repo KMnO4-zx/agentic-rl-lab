@@ -44,6 +44,8 @@ This is a lab notebook and tutorial-style repository. I use [PyTRIO](https://pyt
 
 > *I believe products like PyTRIO or Tinker are future-facing infrastructure for LLM post-training. Getting hands-on with them early is valuable for both algorithm engineers and researchers.*
 
+If you have a promising Agentic-RL idea and want to turn it into a paper or a project, you are welcome to email us to apply for PyTRIO credits. The review process is fairly strict, so please write your proposal carefully and clearly in the email. PyTRIO is also happy to sponsor Agentic RL projects and papers — contact: violin@pytrio.com
+
 ## Table of Contents
 
 | Chapter | Topic | Content |
