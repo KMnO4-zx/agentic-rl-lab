@@ -127,3 +127,7 @@ uv add --optional alfworld "alfworld==0.4.2" "spacy==3.8.13"
 ## License
 
 See [LICENSE](./LICENSE).
+
+## 友情链接
+
+- [LINUX DO](https://linux.do/) — 新的理想型社区
