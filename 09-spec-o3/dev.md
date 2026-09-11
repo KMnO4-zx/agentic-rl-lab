@@ -9,6 +9,8 @@
 | SFT | 63.05% | 53.91% | 85.94% | 138 / 256 |
 | RL | 71.68% | 67.97% | 96.09% | 174 / 256 |
 
+在 `09-spec-o3/` 中执行 `uv run python analysis.py`，生成 [PNG](images/results_comparison.png) 和 [矢量 PDF](images/results_comparison.pdf)。图为 1×2 布局，沿用 AgentOPSD 参考图的风格：总标题与副标题、Times 衬线字体、完整坐标边框、点划网格、加粗数值标注。左侧按模型分组，每组左侧为蓝色斜纹 Accuracy 柱，右侧为红色实心 Macro F1 柱；右侧以橙色方点实线表示严格 Format 合规率，以灰蓝色圆点虚线表示答对题数，分别对应左右纵轴。右图标注 RL 相比 Base 的数值变化，图注注明双轴及生成预算差异。脚本直接使用上述固定结果，无需模型或评测产物；保留 Base 额外格式提醒的说明。PNG 为 300 DPI，图中文字采用英文。
+
 ## 最新开发集结果：Base → SFT → RL epoch 1
 
 已完成 RL 第 1 个 epoch 的 sampler 评测。以下结果来自本地 `outputs/base-dev/metrics-reparsed.json`、`outputs/sft-dev/metrics-reparsed.json` 和 `outputs/sft-rl/metrics.json`，三组轨迹的 256 个样本 ID、任务和参考标签一致。分类均采用新规则：取最后一轮最后一个 `</think>` 后的最后一个完整 answer 块；严格格式合规率独立统计。耗时来自各次终端进度条。
@@ -172,7 +174,7 @@ SFT 的 Macro F1 从原来的 63.57% 降为 63.05%：新规则多提取出 2 条
 
 ## 当前实施状态
 
-当前阶段：已实现 SFT、GRPO 和工具交互评测的 7 个 Python 文件及模板，已完成 Base、SFT 第 2 个 epoch 和 RL 第 1 个 epoch sampler 的固定开发集评测。最新 RL 结果为 Macro F1 71.68%、accuracy 67.97%、严格格式合规率 96.09%；同预算 SFT 对照及统一测试集评测待完成。
+当前阶段：已实现 SFT、GRPO、工具交互评测和结果绘图的 8 个 Python 文件及模板，已完成 Base、SFT 第 2 个 epoch 和 RL 第 1 个 epoch sampler 的固定开发集评测。最新 RL 结果为 Macro F1 71.68%、accuracy 67.97%、严格格式合规率 96.09%；同预算 SFT 对照及统一测试集评测待完成。
 
 实施方案、文件职责、参数选择和后续讨论都记录在 `dev.md`。`README.md` 留到训练完成后写博客，当前不作为实施文档维护。
 
@@ -188,7 +190,7 @@ SFT 的 Macro F1 从原来的 63.57% 降为 63.05%：新规则多提取出 2 条
 
 ## 文件规划
 
-已落地 **7 个 Python 文件 + 1 个 Jinja 模板**。RL 阶段新增 `train_rl.py`，图文协议和工具交互继续复用原有文件。
+已落地 **8 个 Python 文件 + 1 个 Jinja 模板**。RL 阶段新增 `train_rl.py`，结果绘图使用 `analysis.py`；图文协议和工具交互继续复用原有文件。
 
 ```text
 09-spec-o3/
@@ -200,6 +202,7 @@ SFT 的 Macro F1 从原来的 63.57% 降为 63.05%：新规则多提取出 2 条
 ├── rollout.py
 ├── eval.py
 ├── train_rl.py
+├── analysis.py
 └── templates/
     └── qwen3_5_spec_o3.jinja
 ```
@@ -214,6 +217,7 @@ SFT 的 Macro F1 从原来的 63.57% 降为 63.05%：新规则多提取出 2 条
 | `rollout.py` | 一条样本的多轮“生成 → 调工具 → 回填图像 → 继续生成”循环，保存实际采样 token 和 logprob | 已实现 |
 | `eval.py` | 用相同任务、模板、工具与预算评测 Base / SFT / RL checkpoint，保存轨迹与分类指标 | 已实现 |
 | `train_rl.py` | 从 SFT state 开始，组采样、奖励、advantage、PPO 更新、SwanLab 记录与两份权重保存 | 已完成 RL epoch 1，sampler 已评测 |
+| `analysis.py` | 将固定开发集结果绘制成 1×2 柱状图与折线图，导出 PNG / PDF | 已生成并检查图表 |
 
 不单独增加 `config.py`、`reward.py`、`loss.py`、`metrics.py`、`utils.py`。超参数放在对应入口脚本顶部或简单命令行参数里；简短的 reward/advantage 放在 `train_rl.py`，评测指标放在 `eval.py`。
 
