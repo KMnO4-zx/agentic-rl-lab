@@ -11,7 +11,7 @@
 </p>
 
 <p>
-  Reproduce and dissect frontier LLM reinforcement learning algorithms — GRPO, OPD, OPSD, GSPO, DAPO, Search-R1, ReTool, ALFWorld, Vision GRPO, TEMPO, AgentOPSD, Slime and more — with simpler code and a lower GPU barrier.
+  Reproduce and dissect frontier LLM reinforcement learning algorithms — GRPO, OPD, OPSD, GSPO, DAPO, Search-R1, ReTool, ALFWorld, Vision GRPO, TEMPO, AgentOPSD, Spec-o3, Slime and more — with simpler code and a lower GPU barrier.
 </p>
 
 <p>
@@ -63,6 +63,7 @@ If you have a promising Agentic-RL idea and want to turn it into a paper or a pr
 | [Ch. 9](./09-vision-grpo/readme.md) | Vision GRPO | Add image inputs on GeoQA and train Qwen3.5-4B to solve geometry multiple-choice questions with rule-based rewards |
 | [Ch. 9](./09-tempo/readme.md) | TEMPO | Algorithm-level reproduction of macro-step optimization with a generative critic |
 | [Ch. 9](./09-AgentOPSD/readme.md) | AgentOPSD | Use a skill-guided Self-Teacher for turn-level credit assignment |
+| [Ch. 9.4](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/09-spec-o3/readme.md) | Spec-o3 | Find stars with reinforcement learning: use SFT + GRPO to interleave spectral inspection, reasoning, and tool use |
 
 ## Quick Start
 
@@ -73,6 +74,8 @@ git clone https://github.com/KMnO4-zx/agentic-rl-lab.git
 cd agentic-rl-lab
 uv sync
 ```
+
+For Spec-o3 data preparation, SFT, GRPO, evaluation, and plotting commands, see the [Spec-o3 Quick Start](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/09-spec-o3/start.md) (in Chinese).
 
 To run the ALFWorld, TEMPO, or AgentOPSD chapters, you also need the TextWorld environment dependencies:
 
@@ -91,7 +94,7 @@ uv add \
   "numpy>=2.5.1" \
   "openai>=2.44.0" \
   "python-dotenv>=1.2.2" \
-  "pytrio==0.2.8" \
+  "pytrio==0.2.9" \
   "swanlab==0.9.2" \
   "torch>=2.9.1" \
   "torchvision>=0.27.1" \
