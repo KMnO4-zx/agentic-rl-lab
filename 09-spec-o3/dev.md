@@ -1,6 +1,178 @@
 # Spec-o3 / Qwen3.5-4B 实施方案
 
-当前阶段：已实现 SFT 与工具交互评测的 6 个 Python 文件及模板，本地检查和单样本远程工具交互检查已通过；尚未启动 SFT 训练。`train_rl.py` 按原定顺序，在 SFT 和交互评测完成后再实现。
+
+## result
+
+| 模型 | Macro F1 | Accuracy | Format | 答对题数 |
+|---|---:|---:|---:|---:|
+| Base | 53.99% | 38.67% | 0.39% | 99 / 256 |
+| SFT | 63.05% | 53.91% | 85.94% | 138 / 256 |
+| RL | 71.68% | 67.97% | 96.09% | 174 / 256 |
+
+## 最新开发集结果：Base → SFT → RL epoch 1
+
+已完成 RL 第 1 个 epoch 的 sampler 评测。以下结果来自本地 `outputs/base-dev/metrics-reparsed.json`、`outputs/sft-dev/metrics-reparsed.json` 和 `outputs/sft-rl/metrics.json`，三组轨迹的 256 个样本 ID、任务和参考标签一致。分类均采用新规则：取最后一轮最后一个 `</think>` 后的最后一个完整 answer 块；严格格式合规率独立统计。耗时来自各次终端进度条。
+
+| 指标 / 配置 | Base | SFT epoch 2 | SFT → RL epoch 1 |
+|---|---:|---:|---:|
+| 开发集样本数 | 256 | 256 | 256 |
+| 单轮生成上限（token） | 6,132 | 2,048 | 6,144 |
+| 总上下文上限（token） | 16,384 | 16,384 | 16,384 |
+| Base 额外格式提醒 | 有 | 无 | 无 |
+| 提取到答案的样本数 | 210 | 222 | 247 |
+| 回答正确的样本数 | 99 | 138 | 174 |
+| Macro F1 | 53.99% | 63.05% | **71.68%** |
+| Accuracy | 38.67% | 53.91% | **67.97%** |
+| 严格格式合规率 | 0.39% | 85.94% | **96.09%** |
+| 平均生成轮数 | 1.7773 | 5.7461 | 5.3555 |
+| 工具调用次数 | 199 | 1,215 | 1,115 |
+| 工具调用成功次数 | 199 | 1,211 | 1,115 |
+| 评测耗时 | 14 分 07 秒 | 11 分 57 秒 | 7 分 10 秒 |
+
+相对同一答案提取规则下的 SFT 结果，RL epoch 1 的 Macro F1 增加 **8.63 个百分点**，accuracy 增加 **14.06 个百分点**，多答对 **36 道题**；严格格式合规率增加 **10.16 个百分点**。工具调用减少 100 次，本次 1,115 次调用全部成功。
+
+RL epoch 1 各任务结果：
+
+| 任务 | 样本数 | TP | FP | FN | Precision | Recall | F1 | Accuracy | 严格格式合规率 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| cc | 56 | 22 | 23 | 2 | 48.89% | 91.67% | 63.77% | 55.36% | 100.00% |
+| cv | 50 | 13 | 3 | 10 | 81.25% | 56.52% | 66.67% | 74.00% | 98.00% |
+| gm | 51 | 26 | 5 | 3 | 83.87% | 89.66% | 86.67% | 84.31% | 96.08% |
+| ss | 50 | 20 | 6 | 3 | 76.92% | 86.96% | 81.63% | 82.00% | 100.00% |
+| wd | 49 | 17 | 14 | 9 | 54.84% | 65.38% | 59.65% | 44.90% | 85.71% |
+
+同规则比较下，五个任务的 F1 都提高：cc / cv / gm / ss / wd 分别增加 7.43 / 12.61 / 7.30 / 14.97 / 0.83 个百分点。ss 和 cv 的提升更大；wd 的 F1 变化较小，召回提高，但误报从 10 次增加到 14 次，precision 从 60.00% 降至 54.84%。
+
+轨迹核对：246 条严格格式合格，另有 1 条格式不合格但能提取答案，9 条达到 8 轮工具交互上限。全部样本最后一轮均为 `stop_reason=stop`，本次没有最后一轮因 token 上限截断的记录。
+
+**当前结果统一了样本和答案提取口径，但生成预算尚未统一。** SFT 的单轮上限为 2,048 token，RL 为 6,144 token，因此现有差值可能同时受模型训练与生成预算变化影响，尚不能全部归因于 RL。下一步可将 SFT 也设为 6,144 token 复测，保存到独立目录后再比较。两者的其余记录参数均为 `max_seq_len=16384`、`max_turns=8`、`concurrency=16`、`temperature=0.6`、`seed=42`。
+
+本次 RL 评测命令（在 `09-spec-o3/` 中运行）：
+
+```bash
+uv run python eval.py \
+    --model-path 'trio://run_nhpbcwj17fa7/sampler_weights/spec-o3-rl-epoch-1-sampler' \
+    --output outputs/sft-rl \
+    --max-tokens 6144 \
+    --max-seq-len 16384
+```
+
+SFT 同预算复测命令（尚未运行）：
+
+```bash
+uv run python eval.py \
+    --model-path 'trio://run_jjljxa4mc24x/sampler_weights/spec-o3-sft-epoch-2-sampler' \
+    --output outputs/sft-dev-6144 \
+    --max-tokens 6144 \
+    --max-seq-len 16384
+```
+
+## 历史记录：Base 与 SFT 首轮严格评测
+
+以下记录首轮实际运行的终端评测结果：基模为 `Qwen/Qwen3.5-4B`，SFT 使用第 2 个 epoch 保存的 sampler 权重，均评测固定开发集的 **256 条样本**，单轮生成上限为 2,048 token。后续 Base 的 4,096 / 6,132 token 复测单独记录在下方。比例指标以百分比展示，保留两位小数；平均轮数保留四位小数。
+
+| 整体指标 | Base | SFT（epoch 2） |
+|---|---:|---:|
+| 样本数 | 256 | 256 |
+| Macro F1 | 0.00% | 63.57% |
+| Accuracy | 0.00% | 53.91% |
+| 最终答案格式合规率（format_rate） | 0.00% | 85.94% |
+| 平均生成轮数（mean_turns） | 1.5664 | 5.7461 |
+| 工具调用次数（tool_calls） | 145 | 1,215 |
+| 工具调用成功次数（tool_successes） | 145 | 1,211 |
+| 评测耗时（进度条记录） | 15 分 34 秒 | 11 分 57 秒 |
+
+| 任务 | 模型 | 样本数 | TP | FP | FN | Precision | Recall | F1 | Accuracy | 格式合规率 |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| cc | Base | 56 | 0 | 0 | 24 | 0.00% | 0.00% | 0.00% | 0.00% | 0.00% |
+| cc | SFT | 56 | 20 | 27 | 4 | 42.55% | 83.33% | 56.34% | 41.07% | 92.86% |
+| cv | Base | 50 | 0 | 0 | 23 | 0.00% | 0.00% | 0.00% | 0.00% | 0.00% |
+| cv | SFT | 50 | 10 | 4 | 13 | 71.43% | 43.48% | 54.05% | 56.00% | 88.00% |
+| gm | Base | 51 | 0 | 0 | 29 | 0.00% | 0.00% | 0.00% | 0.00% | 0.00% |
+| gm | SFT | 51 | 25 | 9 | 4 | 73.53% | 86.21% | 79.37% | 72.55% | 94.12% |
+| ss | Base | 50 | 0 | 0 | 23 | 0.00% | 0.00% | 0.00% | 0.00% | 0.00% |
+| ss | SFT | 50 | 16 | 8 | 7 | 66.67% | 69.57% | 68.09% | 62.00% | 84.00% |
+| wd | Base | 49 | 0 | 0 | 26 | 0.00% | 0.00% | 0.00% | 0.00% | 0.00% |
+| wd | SFT | 49 | 15 | 9 | 11 | 62.50% | 57.69% | 60.00% | 38.78% | 69.39% |
+
+Base 的最终答案格式合规率为 0%，说明当前严格解析协议下没有得到有效的最终答案，分类指标也因此为 0；仅凭这组结果无法判断基模本身的天文识别能力。SFT 后格式合规率达到 85.94%，Macro F1 达到 63.57%，平均交互轮数和工具调用次数均增加。
+
+本次使用的命令（在 `09-spec-o3/` 中执行）：
+
+```bash
+uv run python eval.py --output outputs/base-dev
+
+uv run python eval.py \
+    --model-path 'trio://run_jjljxa4mc24x/sampler_weights/spec-o3-sft-epoch-2-sampler' \
+    --output outputs/sft-dev
+```
+
+### Base 复测：单轮生成上限 4,096 token
+
+本次使用 `--max-tokens 4096 --max-seq-len 16384`，其余记录参数为 `max_turns=8`、`concurrency=16`、`temperature=0.6`、`seed=42`。仍评测同一开发集的 256 道题，耗时 15 分 01 秒；Macro F1、accuracy 和 format rate 均为 0，平均轮数为 1.96484375，工具调用与成功次数均为 247。以下保留当时的轨迹排查结果；`outputs/base-dev/` 随后已被 6,132 token 复测覆盖。
+
+逐条核对轨迹最后一轮的 `stop_reason`、生成 token 数和 `finish_reason`：
+
+| 结束情况 | 样本数 | 占比 | 记录依据 |
+|---|---:|---:|---|
+| 生成正常停止，但动作格式不合格 | 206 | 80.47% | 最后一轮 `stop_reason=stop`，轨迹 `finish_reason=invalid_action` |
+| 达到单轮 token 上限 | 44 | 17.19% | 最后一轮 `stop_reason=length`，均生成恰好 4,096 token |
+| 达到最大交互轮数 | 6 | 2.34% | `finish_reason=max_turns`，均在第 8 轮继续请求工具 |
+
+没有轨迹以 `max_seq_len` 结束。206 条正常停止但格式不合格的输出中，有 198 条在当前解析器截取的正文中包含 `\boxed{YES}` 或 `\boxed{NO}`；其中 16 条包含正确的 `<answer>\boxed{...}</answer>` 子串，但标签外仍有正文。这里统计的是输出结构，未据此重新计算分类准确率。
+
+关键原因是 `protocol.py` 的 `parse_action()` 使用 `re.fullmatch()`：思考结束后的整个正文必须匹配 `<answer>\boxed{YES|NO}说明</answer>`，否则不会产生有效 prediction。实际例子来自 `trajectories.jsonl`：第 1 行正常停止，仅生成 1,317 token，末尾已输出 `\boxed{YES}`，但缺少 answer 标签；第 17 行正常停止，生成 3,421 token，末尾有 `<answer>\boxed{YES}</answer>`，但标签前还输出了分析正文。两条都被记为 `invalid_action`。
+
+因此，本次全零主要反映严格动作协议不合格，截断影响其中 44 条；这些指标不能解读为模型对所有光谱都判断错误。继续增大 token 上限不能直接解决多数样本的格式问题。若后续单独衡量分类能力，应明确定义最终答案提取规则，并将答案正确性与严格格式合规率分开报告；本次排查保留原评测规则及原始指标。
+
+本次调整按用户指定，仅在评测 Base 时追加最终答案格式提醒：没有传入 `--model-path` 时，`eval.py` 在原始 user 消息末尾追加一段文字，要求思考后的最终回答严格使用 `<answer>\boxed{YES}解释</answer>` 或对应的 NO 格式，所有解释放在 answer 标签内，标签外不输出正文。传入 SFT/RL sampler 路径时使用原始提示词。提醒只加入本次加载的消息，数据文件和动作解析规则保持原样；`metrics.json` 的 `config.base_format_reminder` 标记是否启用，完整提示词保存在轨迹的 `initial_messages` 中。上方两次 Base 结果均来自追加提醒之前；启用提醒后的结果记录如下。
+
+### Base 复测：6,132 token，启用格式提醒
+
+2026-09-11 核对 `outputs/base-dev/metrics.json` 和全部 256 条 `trajectories.jsonl`：`max_tokens=6132`、`max_seq_len=16384`、`max_turns=8`、`concurrency=16`、`temperature=0.6`、`seed=42`。配置中的 `base_format_reminder=true`，全部 256 条 `initial_messages` 都包含新增提醒。
+
+本次耗时 14 分 07 秒；Macro F1 与 accuracy 均为 0，format rate 为 **1/256（0.39%）**，平均轮数为 1.77734375，工具调用与成功次数均为 199。
+
+| 结束情况 | 样本数 | 占比 |
+|---|---:|---:|
+| 生成正常停止，但动作格式不合格 | 214 | 83.59% |
+| 达到单轮 token 上限，均为 6,132 token | 32 | 12.50% |
+| 达到最大交互轮数 | 9 | 3.52% |
+| 严格格式合格，给出最终答案 | 1 | 0.39% |
+
+唯一严格格式合格的是轨迹第 250 行（`train-wd-a33f960e-8fbd-4f05-ad92-81e2b2a58b3a`）：预测 YES，参考标签 NO。因此 format rate 已非零，但 accuracy 和 F1 仍为零。
+
+主要失败原因仍是 answer 标签外出现分析正文。例如第 17 行最后一轮仅生成 420 token，正常停止，正文先写光谱分析，末尾给出 `<answer>\boxed{YES}</answer>`；参考标签也是 YES，但 `parse_action()` 要求整个正文匹配答案结构，所以 prediction 为 null。第 2 行还出现提前闭合 answer 标签、标签外解释及多余闭合标签的问题。增加 token 预算无法直接解决这些格式错误。
+
+为确认格式错误与判断错误的区别，对现有轨迹做了一次离线统计：仅查看最后一轮 `stop_reason=stop` 且含 `</think>` 的输出，取最后一个 `</think>` 之后的正文；要求其中恰好出现一个完整的 `<answer>\boxed{YES|NO}...</answer>` 块，且整个正文仅有一个 boxed 标签。共有 **207 条**满足这一答案提取条件，其中 **97 条**与参考标签一致、110 条不一致；207 条中有 206 条被严格动作解析判为无效。这项统计允许答案标签外有文字或多余闭合标签，仅用于诊断，未覆盖原始 prediction、metrics 或训练奖励，也不能直接与上方 SFT 的严格指标比较。
+
+本次排查后，用户确认将分类答案提取与严格 format rate 分开，具体规则和重算结果如下。
+
+### 评测答案提取规则与现有轨迹重算
+
+`eval.py` 的 `extract_answer()` 只读取最后一轮生成中、最后一个 `</think>` 之后的正文，在其中匹配完整的 `<answer>\boxed{YES|NO}解释</answer>`，取最后一个匹配结果。解释可以为空，也可以跨行；答案块前后允许有其他正文。没有 `</think>` 或没有匹配到完整答案块时，prediction 为 null。该规则不限制最后 100 个字符，也不从思考或裸 YES/NO 中提取答案。
+
+Base、SFT、RL 评测共用这一规则。分类指标使用提取后的 prediction，`format_ok` / `format_rate` 仍记录 rollout 的严格动作格式。因此评测轨迹可能同时出现 `prediction=YES` 和 `finish_reason=invalid_action`：前者表示能提取出分类答案，后者表示生成时未满足严格动作协议。此次修改位于评测层，工具交互和 RL 的训练奖励仍按原规则执行。后续运行的 `metrics.json` 会记录 `config.answer_extraction=last_answer_after_last_think`。
+
+已对现有 Base / SFT 各 256 条轨迹使用同一提取规则重算，结果分别保存到 `outputs/base-dev/metrics-reparsed.json` 和 `outputs/sft-dev/metrics-reparsed.json`，原始 `metrics.json` 与 `trajectories.jsonl` 保留。
+
+| 指标 | Base（6,132 token，带格式提醒） | SFT epoch 2（2,048 token） |
+|---|---:|---:|
+| 提取到答案的样本数 | 210 / 256 | 222 / 256 |
+| 回答正确的样本数 | 99 / 256 | 138 / 256 |
+| Macro F1 | 53.99% | 63.05% |
+| Accuracy | 38.67% | 53.91% |
+| 严格格式合规率 | 0.39% | 85.94% |
+
+SFT 的 Macro F1 从原来的 63.57% 降为 63.05%：新规则多提取出 2 条原先 prediction 为 null 的 YES 答案，两题参考标签都是 NO，因此增加了 2 次误报。正确数仍为 138，accuracy 保持 53.91%，严格格式合规率仍为 85.94%。这是相同轨迹在不同提取规则下的计分变化，无需重训 SFT。
+
+这里统一了答案提取口径，两次生成的 token 预算和提示词设置仍有差异，不能视为预算一致的对照实验。提取规则仅要求正文中有完整答案块，没有额外按 `stop_reason` 筛选；Base 中有 3 条最后一轮达到 token 上限，但已生成完整答案块，也参与此次分类统计。这解释了此处 210 条可提取答案与上方仅检查正常停止输出的 207 条之间的差别。
+
+验证覆盖思考内答案排除、多个 `</think>`、多个完整答案取最后一个、带解释及换行、答案标签不完整、未结束思考和空输出等 11 个用例；使用真实 512 条已有轨迹完成重算，严格格式合规率、工具次数和平均轮数保持原记录值，未发起远程生成或训练。
+
+## 当前实施状态
+
+当前阶段：已实现 SFT、GRPO 和工具交互评测的 7 个 Python 文件及模板，已完成 Base、SFT 第 2 个 epoch 和 RL 第 1 个 epoch sampler 的固定开发集评测。最新 RL 结果为 Macro F1 71.68%、accuracy 67.97%、严格格式合规率 96.09%；同预算 SFT 对照及统一测试集评测待完成。
 
 实施方案、文件职责、参数选择和后续讨论都记录在 `dev.md`。`README.md` 留到训练完成后写博客，当前不作为实施文档维护。
 
@@ -16,7 +188,7 @@
 
 ## 文件规划
 
-SFT 阶段已落地 **6 个 Python 文件 + 1 个 Jinja 模板**，包含训练后的工具交互评测。RL 阶段只新增 **1 个 Python 文件**。
+已落地 **7 个 Python 文件 + 1 个 Jinja 模板**。RL 阶段新增 `train_rl.py`，图文协议和工具交互继续复用原有文件。
 
 ```text
 09-spec-o3/
@@ -27,7 +199,7 @@ SFT 阶段已落地 **6 个 Python 文件 + 1 个 Jinja 模板**，包含训练�
 ├── tools.py
 ├── rollout.py
 ├── eval.py
-├── train_rl.py                       # 计划文件，SFT 和评测完成后再实现
+├── train_rl.py
 └── templates/
     └── qwen3_5_spec_o3.jinja
 ```
@@ -35,13 +207,13 @@ SFT 阶段已落地 **6 个 Python 文件 + 1 个 Jinja 模板**，包含训练�
 | 文件 | 职责 | 状态 |
 |---|---|---|
 | `prepare_data.py` | 下载数据、修复已确认的编码问题、转换 messages、保留图片对应关系、划分训练/验证数据并统计长度 | 已实现，分为 `sft` / `bench` 两个入口 |
-| `protocol.py` | 工具 schema、模板渲染、图片 chunk、SFT Datum、工具调用与最终答案解析 | 已实现 |
+| `protocol.py` | 工具 schema、模板渲染、图片 chunk、SFT / RL Datum、工具调用与最终答案解析 | 已实现 |
 | `templates/qwen3_5_spec_o3.jinja` | 在 Qwen3.5 原生模板上保留完整多轮 reasoning，并标记 assistant 监督范围 | 已实现 |
-| `train_sft.py` | 读取整理后的轨迹，构造 Datum，运行 PyTRIO SFT、验证 loss、SwanLab 记录和 checkpoint 保存 | 已实现，未运行远程训练 |
+| `train_sft.py` | 读取整理后的轨迹，构造 Datum，运行 PyTRIO SFT、验证 loss、SwanLab 记录和 checkpoint 保存 | 已完成训练，epoch 2 权重已评测 |
 | `tools.py` | 从 wavelength/flux 数组按指定波段重绘光谱，返回图片 | 已实现 |
 | `rollout.py` | 一条样本的多轮“生成 → 调工具 → 回填图像 → 继续生成”循环，保存实际采样 token 和 logprob | 已实现 |
 | `eval.py` | 用相同任务、模板、工具与预算评测 Base / SFT / RL checkpoint，保存轨迹与分类指标 | 已实现 |
-| `train_rl.py` | 从 SFT 权重开始，组采样、奖励、advantage、PPO 更新、SwanLab 记录与保存 | 后续 RL 阶段 |
+| `train_rl.py` | 从 SFT state 开始，组采样、奖励、advantage、PPO 更新、SwanLab 记录与两份权重保存 | 已完成 RL epoch 1，sampler 已评测 |
 
 不单独增加 `config.py`、`reward.py`、`loss.py`、`metrics.py`、`utils.py`。超参数放在对应入口脚本顶部或简单命令行参数里；简短的 reward/advantage 放在 `train_rl.py`，评测指标放在 `eval.py`。
 
@@ -116,7 +288,7 @@ assistant 的 reasoning、工具调用、最终回答与结束 token 参与 loss
 
 模板保留 Qwen3.5 原生角色、视觉标记、XML 工具调用和 tool response 格式，增加 `{% generation %}` 监督区间，并始终保留所有 assistant 的 `reasoning_content`。Qwen3.5 原生模板本来就保留同一工具交互链的思考；这里也保留跨新 user 问题的早期 reasoning。模板精简为本任务实际使用的文本、图片和消息结构，去掉通用校验、视频分支和兼容解析。SFT 与评测共用该模板。
 
-`train_sft.py` 采用 `pytrio-skill` 中异步 SFT 示例的提交方式，项目保持锁定 PyTRIO 0.2.8。主循环依次提交 `forward_backward_async(cross_entropy)` 和 `optim_step_async()`，拿到两个 Future 后立即用 `asyncio.create_task()` 启动后台结果记录，继续构造和提交下一批。每个训练客户端的任务仍按 FB → 更新 → 下一批 FB 的顺序执行；客户端不逐批等待计算完成。
+`train_sft.py` 采用 `pytrio-skill` 中异步 SFT 示例的提交方式，项目锁定 PyTRIO 0.2.9。主循环依次提交 `forward_backward_async(cross_entropy)` 和 `optim_step_async()`，拿到两个 Future 后立即用 `asyncio.create_task()` 启动后台结果记录，继续构造和提交下一批。每个训练客户端的任务仍按 FB → 更新 → 下一批 FB 的顺序执行；客户端不逐批等待计算完成。
 
 `build_training_batch()` 通过 `asyncio.to_thread()` 构造图文 Datum，图片读取和编码期间事件循环可以继续处理完成的任务。PyTRIO 的 cross entropy 使用求和归约，因此每个新 batch 的 weights 除以该 batch 的 assistant token 总数。后台 `log_training_step()` 等待该批计算和更新完成，再按权重统计 loss；日志任务使用同一个 `asyncio.Lock` 按提交顺序收集结果，保证 SwanLab 的 step 递增，锁不阻塞主循环提交任务。
 
@@ -138,7 +310,7 @@ SFT 训练直接使用数据中已经保存的图片。评测时才由模型自�
 
 `prepare_data.py bench` 把 SpecVI-Bench 的 Parquet 直接下载到 `datasets/rl/data/`，保留初始图、问题、标签和原始 wavelength/flux 数组。使用 parquet 文件名统一 `cc/cv/ss/gm/wd` 任务标识；原数据的 `carbon` 等来源名称不直接当作任务编码。图片提取为 `datasets/rl/images/` 下的 PNG，数组保存为 `datasets/rl/spectra/` 下的 NPZ。数据中 `redshift=null` 表示不作红移校正，整理为 0。
 
-从 `datasets/sft/` 读取 SFT train/val 的对象标识，在公开 train 中先排除这些对象，再按对象划出约 10% 固定开发集；其余 train 留给后续 RL。在 `datasets/rl/` 下输出 `bench_rl_train.jsonl`、`bench_dev.jsonl` 和原始 test 对应的 `bench_test.jsonl`。`bench_stats.json` 记录数量、开发集任务分布及 SFT 与 dev/test 的对象重叠情况。`eval.py` 默认读取 `datasets/rl/bench_dev.jsonl`。
+从 `datasets/sft/` 读取 SFT train/val 的对象标识，只从公开 train 中未在 SFT 出现的对象里划出约 10% 固定开发集；公开 train 中开发集以外的全部对象用于 RL，允许包含 SFT 对象。在 `datasets/rl/` 下输出 `bench_rl_train.jsonl`、`bench_dev.jsonl` 和原始 test 对应的 `bench_test.jsonl`。`bench_stats.json` 记录数量、开发集任务分布及 SFT 与 dev/test 的对象重叠情况。`eval.py` 默认读取 `datasets/rl/bench_dev.jsonl`。
 
 `tools.py` 暴露一个直接的绘图函数，先计算静止系波长 `wavelength / (1 + redshift)`，再选定波段重绘。沿用作者的蓝色曲线、80 DPI 和按窗口宽度选画布的思路，简化刻度设置。它使用真实光谱数组生成新图片，不裁剪已有图片。窗口内不足两个数据点时返回文字观察，模型可据此继续选择波段。
 
@@ -158,7 +330,7 @@ SFT 训练直接使用数据中已经保存的图片。评测时才由模型自�
 
 工具动作使用 Qwen3.5 原生 XML，每轮一个调用。最终回答使用 `<answer>\boxed{YES} 解释</answer>` 或 NO。非法动作结束轨迹；达到轮数或上下文预算时也结束，不自动修复模型输出或追加答案。所有 tool observation 的动作 mask、训练 target 占位和 old logprob 占位为零。
 
-`eval.py` 复用同一个 rollout，在固定数据和交互预算下比较 Base 与 SFT checkpoint。输出各任务的正类 precision、recall、F1、accuracy，以及已评测任务的平均 F1；完整五任务文件对应五任务平均。格式不合格的结果记为无有效预测，accuracy 记错，正类样本记入 FN；没有正类预测时 precision 定义为 0。
+`eval.py` 复用同一个 rollout，在固定数据和交互预算下比较 Base 与 SFT checkpoint。输出各任务的正类 precision、recall、F1、accuracy，以及已评测任务的平均 F1；完整五任务文件对应五任务平均。分类 prediction 取最后一轮最后一个 `</think>` 后的最后一个完整 answer 块，严格格式合规率独立统计。未提取到答案时 accuracy 记错，正类样本记入 FN；没有正类预测时 precision 定义为 0。
 
 评测目录保存 `metrics.json`、`trajectories.jsonl` 和每轮工具图片。JSONL 包含可阅读文本、真实采样 token/logprob、动作 mask 与停止原因。先用这些结果判断 SFT 是否学会完整光谱审核流程，再进入 RL。
 
@@ -172,7 +344,7 @@ SFT 训练直接使用数据中已经保存的图片。评测时才由模型自�
 |---|---|
 | 基模（`--base-model`） | `Qwen/Qwen3.5-4B` |
 | 训练 tokenizer/processor 文件版本（`--model-revision`） | `main` |
-| SDK | 项目锁定的 PyTRIO `0.2.8` |
+| SDK | 项目锁定的 PyTRIO `0.2.9` |
 | SFT epochs / batch size | 1 / 4 |
 | LoRA rank / learning rate | 32 / `2e-5` |
 | SFT 学习率调度 / warmup | 当前为恒定学习率 / 无 warmup |
@@ -197,7 +369,7 @@ SFT 训练直接使用数据中已经保存的图片。评测时才由模型自�
 | 长度 | cutoff 32,768 | 当前服务训练上限 16,384，数据准备保留完整轨迹 |
 | 验证集 | YAML 的 `val_size` 被注释，未开启 | 按对象划出约 10% |
 
-作者的 per-device batch 不能直接与当前脚本的全局 batch 等同；8 卡数据并行时，前者对应全局 32。学习率调度和 warmup 尚未对齐，正式训练前应确定是否沿用作者设置。当前优化器其余参数使用 PyTRIO 0.2.8 默认值，作者 YAML 未显式指定这些字段，尚未逐项核对其训练依赖默认值。本次讨论只记录差异，没有更改训练参数。
+作者的 per-device batch 不能直接与当前脚本的全局 batch 等同；8 卡数据并行时，前者对应全局 32。学习率调度和 warmup 尚未对齐，正式训练前应确定是否沿用作者设置。当前优化器其余参数使用 PyTRIO 0.2.9 默认值，作者 YAML 未显式指定这些字段，尚未逐项核对其训练依赖默认值。本次讨论只记录差异，没有更改训练参数。
 
 先从仓库根目录进入 `09-spec-o3/`，后续命令均在这个目录执行；训练前需要审阅数据清理记录与全量长度统计。
 
@@ -222,13 +394,81 @@ uv run python train_sft.py --base-model Qwen/Qwen3.5-4B --model-revision 851bf6e
 
 已下载 cold-start 原始目录时，可用 `uv run python prepare_data.py sft --sft-source /path/to/dataset`，脚本会把原始文件复制到 `datasets/sft/` 后重新整理，JSONL 的图片路径指向项目内的新位置。该参数用于从外部目录导入；已经位于 `datasets/sft/` 的数据直接运行普通 `sft` 命令。最终统一 test 时给 `eval.py` 传入 `--data datasets/rl/bench_test.jsonl`。Base/SFT/RL 比较时使用同一数据文件和采样参数。
 
-## 后续 RL
+## GRPO 训练
 
-只新增 `train_rl.py`，复用 `protocol.py`、`tools.py`、`rollout.py` 和 `eval.py`。
+本轮编写 RL 前，先将之前的可读性调整、评测进度条和用户设置的评测并发数提交为 `b71084e`。随后新增 `train_rl.py`，在 `protocol.py` 中加入 RL Datum 构造，在 `rollout.py` 中加入第一轮已采样结果的接入；未新增通用训练框架。
 
-训练顺序：从选定 SFT checkpoint 的 `state_path` 加载训练权重 → 同题采样一组完整轨迹 → 按最终 YES/NO 和答案格式计算 reward → 计算组内 advantage → 构造仅 assistant 动作参与 loss 的 Datum → PPO 更新 → 保存和评测。
+论文 §3.3 明确使用 GRPO，§4.2 给出每题 8 条 rollout。核对作者固定提交 `dd6eb9130d9d850cd67b2a6c55e651da08ab28cb` 的 [`spec_o3.yaml`](https://github.com/Maxwell-Jia/spec-o3/blob/dd6eb9130d9d850cd67b2a6c55e651da08ab28cb/reinforcement_learning/recipe/spec_o3/configs/spec_o3.yaml)：RL 为 3 个 epoch、学习率 `1e-6`，关闭 KL loss 和 KL reward；继承的 rollout 默认 temperature / top-p 为 1.0 / 1.0。
 
-工具观察进入后续上下文，但不参与策略 loss。old logprob 使用实际 rollout 返回值。奖励沿用论文的结果正确性与格式约束，不额外奖励工具调用次数。GRPO 的组内标准化、PPO 裁剪和 loss 归一化在实现这个阶段时对照作者配置确定。
+### 第一轮组采样与后续工具交互
+
+每个训练 batch 先通过 `save_weights_and_get_sampling_client_async()` 创建当前权重的 sampler。同一道题的第一轮输入完全相同，`rollout_group()` 用一次 `sample_async(num_samples=group_size)` 取得多个开头，再把每个 sequence 交给独立的 `rollout(first_sequence=...)`。
+
+后续每条轨迹分别维护消息、原始生成 token、工具返回图片和随机种子。调用工具后，各自使用 `num_samples=1` 请求下一轮，保持一题总共 `group_size` 条轨迹，不逐轮扩展分支数量。已结束的轨迹不再请求生成。不同题目和同题的不同轨迹均通过 `asyncio.gather()` 并发执行。
+
+必须等当前 batch 的全部 group 完成后才更新参数；整批更新完成后，下一批重新导出 sampler。整个 group 的 old logprob 都来自同一版采样权重，历史 assistant token 直接保留。单条评测仍使用原有 `rollout()` 入口和默认采样参数。
+
+### Reward、advantage 与 loss
+
+`trajectory_reward()` 使用 `reward = correctness - 0.2 × format_error`：正确且格式合格为 1，正确但格式错误为 0.8，错误但格式合格为 0，错误且格式错误为 -0.2。没有额外工具调用奖励。
+
+正确性和格式分别判断：格式复用现有动作协议；正确性只从最后一轮 `</think>` 后、回答开头提取 YES/NO，允许缺少 answer 或 boxed 标签的答案得到部分分数。这里使用一条明确的解析规则，不沿用作者 reward 文件中的多层 fallback，不扫描思考或工具参数猜答案。因而异常格式答案的提取范围比作者实现更严格。
+
+对同一题的完整 group 计算 `(reward - mean) / (std + 1e-6)`，`std` 使用 `ddof=1`，与作者 VeRL 的 `torch.std()` 一致。同组 reward 全部相同则没有相对梯度信号，不进入更新，但仍进入 reward、accuracy、format 和退化 group 比例等统计。没有生成动作的轨迹也保留在组内 reward 统计中，不创建零动作训练样本。
+
+`build_rl_datum()` 将完整图文输入的最后一个文本 token 移除，将 targets、old logprobs 和动作 mask 统一右移一位。只有实际采样的 assistant token 拥有非零 advantage；初始问题、图片、工具观察和补入的上下文分隔符全部为零。采样没有产生新 token 时不追加空文本 chunk，以便结束处仍可正确右移。
+
+当前使用 PyTRIO 内置 `loss_fn="ppo"`，显式设置 ratio 裁剪区间 `[0.8, 1.2]`。advantage 按整个 batch 有效轨迹的 assistant token 总数缩放。同题 advantage 先在完整 group 内确定，然后将当前 batch 的全部有效轨迹一次传给 `forward_backward_async()`。项目锁定的 PyTRIO 0.2.9 自动拆分请求并累积梯度，因此不设置 `--mini-batch-size`，每批只调用一次 `optim_step_async()`。先提交 forward/backward 和 optimizer 请求，再等待两个 Future 完成；整批没有有效训练样本时跳过更新。
+
+这是标准 clipped PPO 的 GRPO 实现。作者 VeRL 默认还包含 `clip_ratio_c=3.0` 的 dual-clip 分支，本教程未加入该分支；基模、LoRA、batch、上下文预算与保存频率也存在以下差异，不能声称训练配置完全复现。
+
+| 项目 | 作者公开 RL 配置 | 当前默认 |
+|---|---|---|
+| Epoch / 学习率 | 3 / `1e-6` | 1 / `1e-6` |
+| 每题 group size | 8 | 8 |
+| rollout batch 的题目数 | 64 | 8 |
+| 一次参数更新的数据 | 32 个 prompt，VeRL 按 rollout 数展开 | 当前 batch 的全部有效轨迹，最多 8 × 8 = 64 条；PyTRIO 自动累积梯度 |
+| 每批 PPO 遍历次数 | 1 | 1 |
+| temperature / top-p | 1.0 / 1.0 | 1.0 / 1.0 |
+| 最大 assistant 轮数 | 8 | 8 |
+| 长度预算 | prompt 2,048，response 32,768 | 单轮生成 2,048，总上下文 16,384 |
+| KL / entropy 项 | 关闭 / 系数为 0 | 关闭 |
+| 格式错误罚分 | 0.2 | 0.2 |
+| 权重保存 | 每 10 个 trainer step | 默认每 100 个累计 rollout step，以及每个 epoch 结束时保存 state 和 sampler |
+
+### 权重、日志与运行命令
+
+`--state-path` 必填，可从 PyTrio 权重控制台获取，也可使用 SFT / RL 训练终端打印的 **state_path**。SDK 从 checkpoint 元数据恢复基模和 LoRA rank，本地 tokenizer / processor 同样使用恢复客户端的 `model_id`。`--model-revision` 默认 `main`，需与 SFT 使用的文件版本相同。SFT → RL 默认只恢复模型权重，为新目标初始化优化器；从 RL state 继续时，`--resume-optimizer` 同时恢复权重和优化器。该选项不恢复本地数据游标、epoch、随机数进度或 SwanLab step，新运行从指定数据和 seed 开始。
+
+工具图片使用每个 batch 独立的临时目录，组内每条轨迹各有子目录。构造 Datum 后图片已包含在 `ImageChunk.data` 中，临时目录自动清理。训练没有 `--output` 参数，也不写本地 checkpoint 清单。
+
+SwanLab 按 rollout batch 递增 step，记录 reward、答案正确率、格式合格率、退化 group 比例、可训练轨迹数、动作 token 数、工具调用数、生成长度、batch 耗时和累计更新次数；`trainer/*` 为 PyTRIO 聚合当前完整 batch 后返回的服务端指标。每个有效 batch 增加一次更新计数；整批没有有效相对信号时仍记录指标并推进进度条。
+
+`--save-every` 控制周期保存间隔，默认 100：本次运行完成第 100、200、300……个 rollout batch 后，分别提交 state 和 sampler 保存，等待两份都完成并打印远程路径，再进行下一批采样。显式传入 `--save-every 50` 时改为每 50 个 step 保存。保存发生在当前 batch 的参数更新完成之后。step 与 SwanLab 的 step 一致，跨 epoch 连续计数；跳过参数更新的 batch 也计入 step，达到间隔时保存当前权重。重新启动训练时，step 从 0 开始计数。
+
+周期保存的名称为 `<run-name>-step-100-state` / `<run-name>-step-100-sampler` 等。每个 epoch 结束时仍保存 `<run-name>-epoch-1-state` / `<run-name>-epoch-1-sampler`；若恰好与周期保存重合，两组名称都会保留。两类 checkpoint 都只保存在远程，使用 `tqdm.write()` 打印路径，配合两层进度条显示。
+
+训练显示两层进度条：外层保留当前 epoch 的总轨迹进度，每个 step 处理完后推进；内层显示 `Step 当前序号/本轮总步数`，每条完整轨迹结束就推进一次。同一 step 的所有 group 共用内层进度条，轨迹通过 `asyncio.gather()` 保持返回顺序。内层同时显示“准备采样 / 采样中 / 更新参数 / 完成”；全部轨迹没有相对学习信号时显示跳过更新。下一 step 重置内层计数，不保留每步的旧进度条。
+
+当前 RL 训练集为 3,108 道题。`batch-size=8`、`group-size=8` 时，每个 epoch 的总轨迹数为 `3,108 × 8 = 24,864`，共有 `ceil(3,108 / 8) = 389` 个 step。前 388 个 step 各采样 64 条轨迹，最后一个 step 使用剩余 4 道题，采样 32 条轨迹；进度条按尾批实际数量设置总数。这里的 step 是 rollout batch 数，全组同分时实际参数更新次数可能更少。
+
+在 `09-spec-o3/` 中运行：
+
+```bash
+uv run python train_rl.py --state-path '<PyTrio 权重控制台获取或训练终端打印的 state_path>'
+
+uv run python train_rl.py \
+    --state-path '<PyTrio 权重控制台获取或训练终端打印的 state_path>' \
+    --epochs 3 \
+    --batch-size 2 \
+    --group-size 8 \
+    --learning-rate 1e-6 \
+    --save-every 50
+
+uv run python eval.py --model-path '<RL 打印的 sampler_path>' --output outputs/rl-dev
+```
+
+若 SFT 使用固定 HF 文件版本，给 RL 同样传入 `--model-revision 851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a`。正式训练仍应先审阅 SFT 符号清理记录，在固定开发集确认工具交互效果；RL 的在线训练 reward 不等于开发集 F1。
 
 ## 本次检查与后续步骤
 
@@ -238,7 +478,7 @@ uv run python train_sft.py --base-model Qwen/Qwen3.5-4B --model-revision 851bf6e
 
 - 五个文件的可读性调整检查：去除文档字符串后，评测、协议、rollout 和数据准备的语法树与修改前一致；绘图工具对比 9 种情况，覆盖画布阈值两侧、红移、可选标签、空窗口和单点窗口，工具返回值与 PNG 字节均一致。五个文件语法检查、数据准备 / 评测 / SFT 的 `--help` 检查通过。未添加防御性逻辑或启动远程任务。
 - 数据目录调整：本机已有 SFT 的 4,706 个原始文件已复制到 `datasets/sft/`，包含 4,702 张 PNG；逐文件校验内容与固定版本元数据一致。942 条轨迹共引用 4,641 张图片，全部指向项目内的实际文件，848/94 的训练/验证划分和长度统计保持不变。全局旧缓存保留，原先位于 `datasets/` 根目录的整理文件备份在 `/private/tmp/spec-o3-before-directory-migration-my_0tqdn/`。
-- RL 目录检查使用缓存中的 671 条真实 carbon 数据，在临时目录验证 Parquet 输入、`rl/images/` 图片、`rl/spectra/` 数组、JSONL 路径及从 `sft/` 读取对象排除列表。完整 RL 数据尚未下载到项目目录；运行 `prepare_data.py bench` 后按上述结构生成。
+- 早期 RL 目录检查使用缓存中的 671 条真实 carbon 数据，验证 Parquet 输入、`rl/images/` 图片、`rl/spectra/` 数组、JSONL 路径及开发集划分。当前项目目录已准备完整数据，`bench_stats.json` 记录 RL train / dev / test 为 3,108 / 256 / 6,754；SFT 与 dev 的对象交集为 0，与原始 test 的交集为 2。正式报告测试结果时需说明这两个重叠对象的处理方式。
 - 942 条轨迹的结构转换；逐条确认波段参数保持原值，当前单条工具链的渲染结果与固定版本 Qwen3.5 原生模板完全相同。
 - 跨新 user 问题的历史 reasoning 保留，以及 assistant generation mask。
 - 已缓存完整图片的 209 条真实轨迹，共 961 张图片，检查视觉 token 展开、右移与监督范围；这批长度最大为 4,581。该批次不代表全量长度统计。
@@ -250,7 +490,48 @@ uv run python train_sft.py --base-model Qwen/Qwen3.5-4B --model-revision 851bf6e
 
 远程接口检查：使用真实 PyTRIO `Qwen/Qwen3.5-4B` Base sampler，对一条 carbon 样本运行两轮。第一轮生成 676 token 并成功调用绘图工具；回填局部图片后，第二轮生成 239 token 并请求另一波段。两轮的 token/logprob 数量对应。该检查在预设的两轮预算处结束，没有最终分类答案；它验证了图文采样与工具回填链路，不能用来评价分类准确率。产物位于 `/private/tmp/spec-o3-implementation-check/live-eval/`。
 
-后续顺序：完成全量数据准备与待审阅符号处理 → 运行 SFT → 在固定开发集比较 Base/SFT → 根据结果实现 `train_rl.py`。本地模拟检查不构成远程训练成功或论文指标复现。
+RL 本地检查使用真实 benchmark 的图片和光谱数组、缓存的 Qwen3.5 tokenizer / processor、实际 PyTRIO Datum / APIFuture，远程客户端用模拟实现替代。覆盖第一轮 `num_samples=4` 后只有需要工具的两条轨迹分别请求下一轮、独立图片和上下文、实际采样 token / logprob 保留、图文 mask 右移、四种 reward、样本标准差归一化、全组同分、尾批、空生成、评测行为保持、采样与更新的权重版本顺序、state 恢复的两种模式、每轮两份权重和临时图片清理。移除手动拆批后，完整模拟训练跑 2 个 epoch，每个 epoch 的完整批和尾批分别提交 8 条、4 条轨迹，总共更新 4 次；同时检查 advantage 使用整批的 token 分母。另测全组同分时零次更新，日志仍正常递增。检查脚本为 `/private/tmp/spec-o3-rl-full-batch-check.py`，产物在 `/private/tmp/spec-o3-rl-check-9di6hwxt/`；测试 reward、正确率与权重路径均为模拟值。
+
+项目依赖、`uv.lock` 和本地虚拟环境已从 PyTRIO 0.2.8 升级到 0.2.9。核对新版的异步训练、自动梯度累积、state 恢复和两份权重保存接口后，重新通过上述整批 RL 检查，产物为 `/private/tmp/spec-o3-rl-check-x7gox7cy/`。本次升级验证没有发起远程训练。
+
+两层进度条检查使用 `/private/tmp/spec-o3-rl-progress-check.py`，在模拟远程客户端的条件下确认每条轨迹结束立即推进、返回顺序保持、外层不重复计数、尾批重置总数、step 序号及更新/跳过阶段显示。检查通过，产物为 `/private/tmp/spec-o3-rl-check-sd54y7qp/`。
+
+周期保存检查使用 `/private/tmp/spec-o3-step-checkpoint-check.py`，运行两个各含 3 个 rollout batch 的模拟 epoch。保存间隔为 2 时，验证 step 2 / 4 / 6 的周期保存、epoch 1 / 2 的轮末保存，以及跨 epoch 计数、尾批、跳过更新、更新完成后保存和两份异步保存都完成后再采样；间隔为 50 时验证不足间隔仍保留轮末保存。使用 PyTRIO 0.2.9 的真实 `APIFuture` 配合模拟客户端，两组检查及 `train_rl.py --help` 均通过，没有发起远程训练或保存。
+
+已完成 SFT 训练、RL epoch 1，以及固定开发集上的 Base / SFT / RL 评测，结果见文档开头。后续顺序：补齐 SFT 的 6,144 token 同预算开发集对照 → 按统一设置评测测试集。数据中待审阅符号的处理情况仍需单独记录；当前开发集结果不等同于论文测试集指标复现。
+
+## 服务器副本（2026-09-11）
+
+项目已复制到 `szx@111.231.2.126:/data/home/szx/code/agentic-rl-lab`，包含当前未提交的代码、Git 目录、全部教程数据集和评测产物。迁移文件总大小约 12.5 GB；未复制 macOS 的 `.venv`、Python 字节码、`.DS_Store` 和本地 `.env` 凭据文件，`.env.example` 保留。
+
+服务器使用现有 UV 0.11.29 和 Python 3.13.14，在项目内创建 `.venv`。依赖按照原始 `uv.lock` 安装，共 93 个包，其中 PyTRIO 为 0.2.9、torch 为 2.13.0+cpu。官方 PyPI 下载慢，安装时通过 `uv export --locked` 导出固定版本与哈希，再使用国内镜像及 PyTorch CPU 源执行 `uv pip sync`；项目的 `pyproject.toml` 和 `uv.lock` 保持与本机一致。随后原项目的离线 `uv sync --locked --python 3.13` 和 `uv pip check` 均通过。
+
+Qwen3.5-4B 的 Hugging Face / ModelScope tokenizer、chat template 和图像处理器缓存已从本机复制。服务器已有 PyTRIO 登录配置，连接检查确认可访问 `Qwen/Qwen3.5-4B`；没有复制本机登录凭据，也没有代为启动训练。
+
+服务器副本中，6 个包含本机项目绝对路径的 Spec-o3 JSONL 文件已统一替换为服务器项目路径：SFT train / val / cleaning 和 RL train / dev / test。本机数据文件保持原样。迁移检查确认：
+
+- 93 个代码及配置文件 SHA-256 一致，11 个教程数据目录在路径替换前的文件数、总字节数一致。
+- SFT train / val 为 848 / 94 条；RL train / dev / test 为 3,108 / 256 / 6,754 条。
+- 整理后的数据引用的 24,877 个不同图片、光谱文件全部存在。
+- 服务器离线构造实际 RL 初始图文输入（1,274 token）和 SFT Datum（2,630 token），并成功读取光谱 NPZ、生成局部光谱图；`train_rl.py --help` 正常。
+
+在服务器上运行：
+
+```bash
+ssh szx@111.231.2.126
+cd /data/home/szx/code/agentic-rl-lab/09-spec-o3
+tmux new -s spec-o3-rl
+
+uv run python train_rl.py \
+    --state-path 'trio://run_jjljxa4mc24x/weights/spec-o3-sft-epoch-2-state' \
+    --epochs 1 \
+    --batch-size 8 \
+    --group-size 8 \
+    --learning-rate 1e-6 \
+    --swanlab-mode disabled
+```
+
+`tmux` 中按 `Ctrl+B` 再按 `D` 可离开会话；重新登录后用 `tmux attach -t spec-o3-rl` 返回。服务器已经安装环境，进入 `09-spec-o3/` 后可直接使用 `uv run`。以后再次同步数据时，需要保留或重新执行服务器路径转换。
 
 ## 参考资料
 

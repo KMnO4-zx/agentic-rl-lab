@@ -2,19 +2,33 @@ r"""用同一套工具与预算评测 Base、SFT 或后续 RL 的 sampler 权重
 
 在 09-spec-o3/ 目录下运行：
 
-uv run python eval.py --output outputs/base-dev
+uv run python eval.py \
+    --output outputs/base-dev \
+    --max-tokens 6144 \
+    --max-seq-len 16384
 
 uv run python eval.py \
     --model-path '<训练终端打印的 sampler_path>' \
-    --output outputs/sft-dev
+    --output outputs/sft-dev \
+    --max-tokens 6144 \
+    --max-seq-len 16384
+
+uv run python eval.py \
+    --model-path 'trio://run_nhpbcwj17fa7/sampler_weights/spec-o3-rl-epoch-1-sampler' \
+    --output outputs/sft-rl \
+    --max-tokens 6144 \
+    --max-seq-len 16384
 
 默认使用 datasets/rl/bench_dev.jsonl；输出分类指标、完整轨迹和工具图片。
+不传 --model-path 时，仅为 Base 追加最终答案格式提醒；SFT/RL 使用原始提示词。
+分类答案取最后一个 </think> 后的最后一个完整 answer 块；格式合规率单独统计。
 进度条按已完成的样本数统计，每批评测结束后更新。
 """
 
 import argparse
 import asyncio
 import json
+import re
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -24,6 +38,20 @@ from transformers import AutoImageProcessor, AutoTokenizer
 
 from protocol import BASE_MODEL, MODEL_REVISION
 from rollout import rollout
+
+
+def extract_answer(text):
+    """只读思考结束后的正文，取最后一个完整答案块中的 YES/NO。"""
+    _, thinking_end, body = text.rpartition("</think>")
+    if not thinking_end:
+        return None
+
+    answers = re.findall(
+        r"<answer>\s*\\boxed\{(YES|NO)\}.*?</answer>",
+        body,
+        re.S,
+    )
+    return answers[-1] if answers else None
 
 
 def classification_metrics(results):
@@ -82,6 +110,19 @@ async def main(args):
 
     # 1. 读取评测集，创建与训练模板匹配的 tokenizer 和图像处理器。
     rows = [json.loads(line) for line in args.data.read_text().splitlines()]
+    # Base 额外强调最终答案格式；只修改本次评测的消息，不改数据文件。
+    if args.model_path is None:
+        for row in rows:
+            row["messages"][-1]["content"].append({
+                "type": "text",
+                "text": (
+                    "\n\nFor your final answer, after thinking, output only "
+                    r"<answer>\boxed{YES}your justification</answer> or "
+                    r"<answer>\boxed{NO}your justification</answer>, "
+                    "with all justification inside the answer tags and no text outside them."
+                ),
+            })
+
     tokenizer = AutoTokenizer.from_pretrained(
         BASE_MODEL,
         revision=MODEL_REVISION,
@@ -133,6 +174,9 @@ async def main(args):
                     for key, value in result.items()
                     if key != "model_input"
                 }
+                # 分类读取最后一轮的答案；format_ok 仍记录严格动作格式。
+                final_text = record["turns"][-1]["text"] if record["turns"] else ""
+                record["prediction"] = extract_answer(final_text)
                 file.write(json.dumps(record, ensure_ascii=False) + "\n")
                 results.append({
                     key: record[key]
@@ -149,6 +193,8 @@ async def main(args):
         "data": str(args.data),
         "output": str(args.output),
         "base_model": BASE_MODEL,
+        "base_format_reminder": args.model_path is None,
+        "answer_extraction": "last_answer_after_last_think",
     }
     (args.output / "metrics.json").write_text(
         json.dumps({"config": config, **metrics}, ensure_ascii=False, indent=2)

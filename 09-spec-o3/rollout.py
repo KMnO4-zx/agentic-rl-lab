@@ -20,6 +20,8 @@ async def rollout(
     max_seq_len=16384,
     temperature=0.6,
     seed=42,
+    top_p=0.95,
+    first_sequence=None,
 ):
     """执行一条光谱审核轨迹，保留每轮生成结果和用于后续 RL 的 token 信息。"""
     # 1. 构造初始图文输入，并加载可供工具重绘的原始光谱。
@@ -55,26 +57,31 @@ async def rollout(
             finish_reason = "max_seq_len"
             break
 
-        response = await sampler.sample_async(
-            prompt=prompt,
-            num_samples=1,
-            sampling_params=trio.SamplingParams(
-                max_tokens=min(max_tokens, remaining),
-                temperature=temperature,
-                top_p=0.95,
-                stop=[im_end],
-                seed=seed + turn,
-            ),
-        )
-        sequence = response.sequences[0]
+        # GRPO 第一轮已按 num_samples 成组采样；后续沿各自的上下文继续。
+        if turn == 0 and first_sequence is not None:
+            sequence = first_sequence
+        else:
+            response = await sampler.sample_async(
+                prompt=prompt,
+                num_samples=1,
+                sampling_params=trio.SamplingParams(
+                    max_tokens=min(max_tokens, remaining),
+                    temperature=temperature,
+                    top_p=top_p,
+                    stop=[im_end],
+                    seed=seed + turn,
+                ),
+            )
+            sequence = response.sequences[0]
         text = tokenizer.decode(sequence.tokens, skip_special_tokens=False)
         action = parse_action(text)
 
         # 追加服务实际生成的 token，不重新编码 assistant 历史。
-        prompt = trio.ModelInput(chunks=[
-            *prompt.chunks,
-            trio.types.EncodedTextChunk(tokens=sequence.tokens),
-        ])
+        if sequence.tokens:
+            prompt = trio.ModelInput(chunks=[
+                *prompt.chunks,
+                trio.types.EncodedTextChunk(tokens=sequence.tokens),
+            ])
         target_tokens.extend(sequence.tokens)
         logprobs.extend(sequence.logprobs)
         action_mask.extend([1.0] * len(sequence.tokens))

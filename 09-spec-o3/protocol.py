@@ -151,6 +151,25 @@ def build_sft_datum(row, tokenizer, image_processor):
     )
 
 
+def build_rl_datum(trajectory, advantage):
+    """将实际采样轨迹右移一位，只在 assistant 动作位置计算 PPO loss。"""
+    chunks = trajectory["model_input"].chunks
+    model_input = trio.ModelInput(chunks=[
+        *chunks[:-1],
+        trio.types.EncodedTextChunk(tokens=chunks[-1].tokens[:-1]),
+    ])
+    action_mask = np.asarray(trajectory["action_mask"], dtype=np.float32)[1:]
+
+    return trio.Datum(
+        model_input=model_input,
+        loss_fn_inputs={
+            "target_tokens": np.asarray(trajectory["target_tokens"], dtype=np.int64)[1:],
+            "logprobs": np.asarray(trajectory["logprobs"], dtype=np.float32)[1:],
+            "advantages": action_mask * advantage,
+        },
+    )
+
+
 def tool_continuation(messages, image_paths, tokenizer, image_processor):
     """只编码模板中新追加的 tool 返回和 assistant 前缀，保留旧采样 token。"""
     rendered = render_messages(messages, tokenizer, generation=True)
