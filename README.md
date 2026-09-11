@@ -11,7 +11,7 @@
 </p>
 
 <p>
-  复现和拆解前沿 LLM 强化学习算法，用更简单的代码和更低的 GPU 门槛，把 GRPO、OPD、OPSD、GSPO、DAPO、Search-R1、ReTool、ALFWorld、Vision GRPO、TEMPO、AgentOPSD、Slime 等方法跑起来，方便复现。
+  复现和拆解前沿 LLM 强化学习算法，用更简单的代码和更低的 GPU 门槛，把 GRPO、OPD、OPSD、GSPO、DAPO、Search-R1、ReTool、ALFWorld、Vision GRPO、TEMPO、AgentOPSD、Spec-o3、Slime 等方法跑起来，方便复现。
 </p>
 
 <p>
@@ -63,6 +63,7 @@
 | [第 9 篇](./09-vision-grpo/readme.md) | Vision GRPO | 在 GeoQA 上接入图片输入，解决几何数学题 |
 | [第 9 篇](./09-tempo/readme.md) | TEMPO | 算法级复现 macro-step 优化与生成式 critic |
 | [第 9 篇](./09-AgentOPSD/readme.md) | AgentOPSD | 用带 Skill 的 Self-Teacher 分配 turn-level credit |
+| [第 9.4 篇](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/09-spec-o3/readme.md) | Spec-o3 | 用强化学习找星星：通过 SFT + GRPO，让模型边看光谱、边思考、边调用工具 |
 
 ## 快速启动
 
@@ -73,6 +74,8 @@ git clone https://github.com/KMnO4-zx/agentic-rl-lab.git
 cd agentic-rl-lab
 uv sync
 ```
+
+&emsp;&emsp;运行 Spec-o3 的数据下载、SFT、GRPO、评测和绘图命令，见 [Spec-o3 快速开始](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/09-spec-o3/start.md)。
 
 &emsp;&emsp;运行 ALFWorld、TEMPO 或 AgentOPSD 章节时，需要额外安装 TextWorld 环境依赖：
 
@@ -91,7 +94,7 @@ uv add \
   "numpy>=2.5.1" \
   "openai>=2.44.0" \
   "python-dotenv>=1.2.2" \
-  "pytrio==0.2.8" \
+  "pytrio==0.2.9" \
   "swanlab==0.9.2" \
   "torch>=2.9.1" \
   "torchvision>=0.27.1" \

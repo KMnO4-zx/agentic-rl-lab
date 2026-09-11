@@ -244,6 +244,8 @@ __marimo__/
 07-gspo/datasets/
 07-gspo/eval-results/
 09-vision-grpo/datasets/
+09-spec-o3/datasets/
+09-spec-o3/outputs/
 09-vision-grpo/eval-results*.json
 09-tempo/datasets/
 # Local experiment tracking artifacts
