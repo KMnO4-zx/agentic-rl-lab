@@ -63,7 +63,7 @@
 | [第 9 篇](./09-vision-grpo/readme.md) | Vision GRPO | 在 GeoQA 上接入图片输入，解决几何数学题 |
 | [第 9 篇](./09-tempo/readme.md) | TEMPO | 算法级复现 macro-step 优化与生成式 critic |
 | [第 9 篇](./09-AgentOPSD/readme.md) | AgentOPSD | 用带 Skill 的 Self-Teacher 分配 turn-level credit |
-| [第 9.4 篇](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/09-spec-o3/readme.md) | Spec-o3 | 用强化学习找星星：通过 SFT + GRPO，让模型边看光谱、边思考、边调用工具 |
+| [第 9 篇](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/09-spec-o3/readme.md) | Spec-o3 | 用强化学习找星星：通过 SFT + GRPO，让模型边看光谱、边思考、边调用工具 |
 
 ## 快速启动
 
