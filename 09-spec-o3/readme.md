@@ -269,7 +269,7 @@ $$
 同一题的 8 条轨迹按 reward 计算 advantage：
 
 $$
-A_i=\frac{r_i-\operatorname{mean}(r_1,\ldots,r_8)}{\operatorname{std}(r_1,\ldots,r_8)+10^{-6}}
+A_i=\frac{r_i-\mathrm{mean}(r_1,\ldots,r_8)}{\mathrm{std}(r_1,\ldots,r_8)+10^{-6}}
 $$
 
 标准差使用样本标准差，即 `ddof=1`。即使答错只得 0 分，当同组其他轨迹获得更高 reward 时，这条轨迹仍会得到负 advantage。
