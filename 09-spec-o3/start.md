@@ -66,6 +66,8 @@ uv run python train_sft.py \
 
 **保存好 epoch 2 的两种路径。** 也可以从 PyTRIO 权重控制台获取。训练脚本不在本地保存权重文件。
 
+训练 9B 时，使用 `--base-model Qwen/Qwen3.5-9B` 和独立的 `--run-name`，后续 RL 从这份 9B SFT 的 `state_path` 开始。
+
 ## 4. 从 SFT state 开始 GRPO：1 个 epoch
 
 把占位符替换成 **PyTRIO 权重控制台获取或训练终端打印的 SFT epoch 2 `state_path`**：
@@ -94,14 +96,17 @@ uv run python train_rl.py \
 
 从 SFT 接 RL 默认使用新的优化器。继续已有 RL 训练时，可换成 RL 的 `state_path` 并加 `--resume-optimizer`；它会恢复优化器状态，但脚本仍从新一轮数据遍历开始，不恢复之前的样本位置。
 
+上面保留首轮 4B 的 1 epoch 命令。要从 SFT state 开始训练 3 个 epoch，改为 `--epochs 3`。RL 会从 `state_path` 恢复基模；4B 与 9B 应分别使用各自的 SFT 权重和 `--run-name`。
+
 ## 5. 评测 Base、SFT 和 RL
 
-下面三组命令统一使用 6,144 token 的单轮上限和 16,384 token 的总上下文上限。默认评测 `datasets/rl/bench_dev.jsonl` 中的 256 条样本。
+下面的命令统一使用 6,144 token 的单轮上限和 16,384 token 的总上下文上限。默认评测 `datasets/rl/bench_dev.jsonl` 中的 256 条样本。博客已新增 4B / 9B RL epoch 3 结果，分别答对 175 / 191 题。
 
 ### Base
 
 ```bash
 uv run python eval.py \
+    --base-model Qwen/Qwen3.5-4B \
     --output outputs/base-dev-6144 \
     --max-tokens 6144 \
     --max-seq-len 16384 \
@@ -114,6 +119,7 @@ uv run python eval.py \
 
 ```bash
 uv run python eval.py \
+    --base-model Qwen/Qwen3.5-4B \
     --model-path '<SFT epoch 2 的 sampler_path>' \
     --output outputs/sft-dev-6144 \
     --max-tokens 6144 \
@@ -127,6 +133,7 @@ uv run python eval.py \
 
 ```bash
 uv run python eval.py \
+    --base-model Qwen/Qwen3.5-4B \
     --model-path '<RL epoch 1 的 sampler_path>' \
     --output outputs/rl-dev-6144 \
     --max-tokens 6144 \
@@ -136,7 +143,35 @@ uv run python eval.py \
     --seed 42
 ```
 
-不传 `--model-path` 就评测 Base，并自动追加最终答案格式提醒；SFT/RL 使用原始提示词。`--output` 必须填写，各模型使用不同目录。
+### 4B RL epoch 3
+
+```bash
+uv run python eval.py \
+    --base-model Qwen/Qwen3.5-4B \
+    --model-path '<4B RL epoch 3 的 sampler_path>' \
+    --output outputs/rl-4b-e3 \
+    --max-tokens 6144 \
+    --max-seq-len 16384 \
+    --concurrency 16 \
+    --temperature 0.6 \
+    --seed 42
+```
+
+### 9B RL epoch 3
+
+```bash
+uv run python eval.py \
+    --base-model Qwen/Qwen3.5-9B \
+    --model-path '<9B RL epoch 3 的 sampler_path>' \
+    --output outputs/rl-9b-e3 \
+    --max-tokens 6144 \
+    --max-seq-len 16384 \
+    --concurrency 16 \
+    --temperature 0.6 \
+    --seed 42
+```
+
+`--base-model` 必须与 sampler 权重的基模一致；`--model-revision` 可指定 tokenizer 与图像处理器的 HF 文件版本，默认 4B 固定版本、9B 使用 `main`。不传 `--model-path` 就评测 Base，并自动追加最终答案格式提醒；SFT/RL 使用原始提示词。`--output` 必须填写，各模型使用不同目录。
 
 每个输出目录中包含：
 
@@ -144,7 +179,7 @@ uv run python eval.py \
 - `trajectories.jsonl`：逐样本的完整交互记录。
 - `images/`：评测过程中工具生成的局部光谱图。
 
-博客已有结果的历史单轮预算为 Base 6,132、SFT 2,048、RL 6,144 token。这里的命令用于统一预算的新评测，结果需单独记录。完整测试集可通过 `--data datasets/rl/bench_test.jsonl` 指定；正式使用前需处理统计中记录的 2 个 SFT/test 光谱对象重叠。
+博客已有结果的历史单轮预算为 4B Base 6,132、4B SFT 2,048、三组 RL 6,144 token。这里的 Base/SFT 命令用于统一预算的新评测，结果需单独记录；两个 RL epoch 3 命令与博客新增结果的预算一致。完整测试集可通过 `--data datasets/rl/bench_test.jsonl` 指定；正式使用前需处理统计中记录的 2 个 SFT/test 光谱对象重叠。
 
 ## 6. 生成结果图
 
@@ -152,7 +187,7 @@ uv run python eval.py \
 uv run python analysis.py
 ```
 
-输出 `images/results_comparison.png` 和同名矢量 PDF。脚本当前绘制博客中的固定结果；取得新评测结果后，需要同步修改 `analysis.py` 中的数值与图注。
+输出 `images/results_comparison.png` 和同名矢量 PDF。脚本当前绘制五组固定结果：4B Base、SFT epoch 2、RL epoch 1、RL epoch 3，以及 9B RL epoch 3。四个面板分别展示 Accuracy、Macro F1、严格格式合规率与答对题数；取得新评测结果后，需要同步修改 `analysis.py` 中的数值与图注。
 
 ## 7. 查看完整参数
 

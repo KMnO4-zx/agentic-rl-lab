@@ -76,6 +76,8 @@ uv sync
 
 &emsp;&emsp;运行 Spec-o3 的数据下载、SFT、GRPO、评测和绘图命令，见 [Spec-o3 快速开始](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/09-spec-o3/start.md)。
 
+&emsp;&emsp;Spec-o3 新增 RL epoch 3 开发集结果：同一批 256 题，Qwen3.5-4B 答对 **175 题（68.36%）**，Qwen3.5-9B 答对 **191 题（74.61%）**，Macro F1 分别为 **70.93% / 75.94%**。完整对照与评测设置见 [Spec-o3 Blog](./09-spec-o3/readme.md)。
+
 &emsp;&emsp;运行 ALFWorld、TEMPO 或 AgentOPSD 章节时，需要额外安装 TextWorld 环境依赖：
 
 ```bash

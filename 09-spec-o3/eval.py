@@ -14,12 +14,15 @@ uv run python eval.py \
     --max-seq-len 16384
 
 uv run python eval.py \
-    --model-path 'trio://run_nhpbcwj17fa7/sampler_weights/spec-o3-rl-epoch-1-sampler' \
-    --output outputs/sft-rl \
+    --base-model Qwen/Qwen3.8-27B \
+    --model-path '<训练终端打印的 sampler_path>' \
+    --output outputs/rl-27b-sft \
     --max-tokens 6144 \
     --max-seq-len 16384
 
 默认使用 datasets/rl/bench_dev.jsonl；输出分类指标、完整轨迹和工具图片。
+--base-model 默认 Qwen/Qwen3.5-4B，必须与 sampler 权重的基模一致。
+未指定 --model-revision 时，4B 沿用固定版本，其他模型使用 main。
 不传 --model-path 时，仅为 Base 追加最终答案格式提醒；SFT/RL 使用原始提示词。
 分类答案取最后一个 </think> 后的最后一个完整 answer 块；格式合规率单独统计。
 进度条按已完成的样本数统计，每批评测结束后更新。
@@ -107,6 +110,8 @@ def classification_metrics(results):
 
 async def main(args):
     load_dotenv()
+    if args.model_revision is None:
+        args.model_revision = MODEL_REVISION if args.base_model == BASE_MODEL else "main"
 
     # 1. 读取评测集，创建与训练模板匹配的 tokenizer 和图像处理器。
     rows = [json.loads(line) for line in args.data.read_text().splitlines()]
@@ -124,19 +129,19 @@ async def main(args):
             })
 
     tokenizer = AutoTokenizer.from_pretrained(
-        BASE_MODEL,
-        revision=MODEL_REVISION,
+        args.base_model,
+        revision=args.model_revision,
     )
     processor = AutoImageProcessor.from_pretrained(
-        BASE_MODEL,
-        revision=MODEL_REVISION,
+        args.base_model,
+        revision=args.model_revision,
         backend="pil",
     )
 
     # 2. model_path 留空使用 Base；传入时加载对应 sampler 权重。
     service = trio.ServiceClient()
     sampler = service.create_sampling_client(
-        base_model=BASE_MODEL,
+        base_model=args.base_model,
         model_path=args.model_path,
     )
     args.output.mkdir(parents=True, exist_ok=True)
@@ -192,7 +197,6 @@ async def main(args):
         **vars(args),
         "data": str(args.data),
         "output": str(args.output),
-        "base_model": BASE_MODEL,
         "base_format_reminder": args.model_path is None,
         "answer_extraction": "last_answer_after_last_think",
     }
@@ -210,6 +214,15 @@ if __name__ == "__main__":
         "--data",
         type=Path,
         default=Path(__file__).parent / "datasets/rl/bench_dev.jsonl",
+    )
+    parser.add_argument(
+        "--base-model",
+        default=BASE_MODEL,
+        help="评测使用的 Qwen3.5 基座模型，须与 sampler 权重的基模一致",
+    )
+    parser.add_argument(
+        "--model-revision",
+        help="模型的 HF 文件版本（commit、tag 或分支）；默认 4B 固定版本，其他模型 main",
     )
     parser.add_argument(
         "--model-path",

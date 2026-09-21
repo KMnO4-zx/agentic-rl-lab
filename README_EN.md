@@ -76,6 +76,8 @@ uv sync
 
 For Spec-o3 data preparation, SFT, GRPO, evaluation, and plotting commands, see the [Spec-o3 Quick Start](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/09-spec-o3/start.md) (in Chinese).
 
+New Spec-o3 RL epoch 3 results on the same 256 development examples: Qwen3.5-4B answers **175 correctly (68.36%)**, and Qwen3.5-9B answers **191 correctly (74.61%)**, with Macro F1 scores of **70.93% / 75.94%**, respectively. See the [Spec-o3 article](./09-spec-o3/readme.md) for the full comparison and evaluation settings.
+
 To run the ALFWorld, TEMPO, or AgentOPSD chapters, you also need the TextWorld environment dependencies:
 
 ```bash

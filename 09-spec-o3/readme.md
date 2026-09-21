@@ -31,25 +31,38 @@
 
 任务换到了天文学。给模型一张完整光谱，它需要判断这个天体是否属于某个目标类别。如果全图里的细节看不清，模型可以指定一个波长区间，让工具重新画出局部光谱，再根据新证据继续判断。
 
-我用 Qwen3.5-4B 和 PyTRIO 跑了 **2 个 epoch 的 cold-start SFT，再接 1 个 epoch 的 GRPO**。训练、工具交互和独立评测都已经走完，下面从结果开始讲。
+我先用 Qwen3.5-4B 和 PyTRIO 跑了 **2 个 epoch 的 cold-start SFT，再接 1 个 epoch 的 GRPO**，随后补充了 **4B 和 9B 的 RL epoch 3** 评测。训练、工具交互和独立评测都已经走完，下面从结果开始讲。
 
-## 0. 先看结果：99 → 138 → 174 道题
+## 0. 先看结果：4B 答对 175 题，9B 答对 191 题
 
-三个模型评测的是同一批 **256 条开发集样本**。表中的 RL 指从 SFT epoch 2 权重继续训练得到的 RL epoch 1 模型；Base 指未经本任务训练的 `Qwen/Qwen3.5-4B`。
+下面五组结果来自同一批 **256 条开发集样本**。Base、SFT 和前两组 RL 使用 `Qwen/Qwen3.5-4B`，最后一组使用 `Qwen/Qwen3.5-9B`。两个模型各自从对应的 SFT 权重开始 RL；表中保留首轮 4B RL epoch 1，便于和新增的 epoch 3 结果对照。
 
-| 模型 | Macro F1 | Accuracy | Format | 答对题数 |
+| 模型 / 阶段 | Macro F1 | Accuracy | Format | 答对题数 |
 | --- | ---: | ---: | ---: | ---: |
-| Base | 53.99% | 38.67% | 0.39% | 99 / 256 |
-| SFT | 63.05% | 53.91% | 85.94% | 138 / 256 |
-| **RL** | **71.68%** | **67.97%** | **96.09%** | **174 / 256** |
+| Qwen3.5-4B Base | 53.99% | 38.67% | 0.39% | 99 / 256 |
+| Qwen3.5-4B SFT epoch 2 | 63.05% | 53.91% | 85.94% | 138 / 256 |
+| Qwen3.5-4B RL epoch 1 | 71.68% | 67.97% | 96.09% | 174 / 256 |
+| Qwen3.5-4B RL epoch 3 | 70.93% | 68.36% | 98.05% | 175 / 256 |
+| **Qwen3.5-9B RL epoch 3** | **75.94%** | **74.61%** | **99.61%** | **191 / 256** |
 
 这里的 Macro F1 是五个任务各自正类 F1 的平均值；Accuracy 是全部 256 题中答对的比例；Format 表示轨迹是否以符合严格动作协议的最终答案结束。无法提取答案的样本在 Accuracy 中按错误计。
 
-**比较条件需要一起看：** 三组使用相同的样本、工具和答案提取规则，总上下文上限均为 16,384 token；单轮生成上限 6,144 token，Base 还额外加了一句格式提醒。现有结果展示了三次实际评测，SFT 与 RL 的差值仍可能包含生成预算的影响。
+五组训练使用相同的样本、工具和当前答案提取规则，总上下文上限均为 16,384 token；历史单轮生成上限分别为 Base 6,132、SFT 2,048、三组 RL 6,144 token，Base 还额外加了一句格式提醒。三组 RL 均使用最多 8 轮、temperature 0.6、seed 42 和并发 16。SFT 与 RL 的差值仍可能包含生成预算的影响；4B 与 9B 使用不同的基模和训练权重，这组结果用于比较当前 checkpoint 的表现。
 
-![Spec-o3 的 Base、SFT 与 RL 开发集结果：Accuracy、Macro F1、严格格式合规率与答对题数](./images/results_comparison.png)
+![Spec-o3 五组开发集结果：4B Base、SFT epoch 2、RL epoch 1、RL epoch 3，以及 9B RL epoch 3 的 Accuracy、Macro F1、严格格式合规率与答对题数](./images/results_comparison.png)
 
-SFT 后多答对了 39 题，严格格式合规率从 0.39% 提高到 85.94%；继续 RL 后又多答对 36 题，Macro F1 增加 8.63 个百分点，格式合规率达到 96.09%。从这一组记录看，模型的分类表现和按协议完成交互的能力都出现了改善。
+4B 从 Base 到 SFT 多答对了 39 题，首轮 RL 又多答对了 36 题。新增的 4B RL epoch 3 比 epoch 1 多答对 1 题，格式合规率提高到 **98.05%**，但 Macro F1 从 **71.68%** 小幅降到 **70.93%**。更多 epoch 在这次开发集评测中没有带来所有指标的同步提升。
+
+9B RL epoch 3 答对 **191 / 256**，比 4B RL epoch 3 多 16 题，Accuracy 高 **6.25 个百分点**、Macro F1 高 **5.01 个百分点**。它的格式合规率为 **255 / 256（99.61%）**，1,011 次工具调用全部执行成功；4B RL epoch 3 则是 **251 / 256（98.05%）**，1,087 次工具调用全部执行成功。
+
+两个 epoch 3 checkpoint 的分任务 F1 如下，括号内为该任务的题数：
+
+| 模型 | CC 碳星（56） | CV 激变变星（50） | GM M 型巨星（51） | SS S 型星（50） | WD 白矮星（49） |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Qwen3.5-4B RL epoch 3 | 52.31% | 61.11% | **92.06%** | 79.17% | **70.00%** |
+| Qwen3.5-9B RL epoch 3 | **67.80%** | **71.79%** | 87.72% | **84.62%** | 67.80% |
+
+9B 在 CC、CV、SS 三个任务上的 F1 更高，4B 在 GM 和 WD 上更高。当前 9B 的整体得分最好，逐任务表现仍有差异。
 
 Base 已经能答对部分题目，但格式遵循还不稳定。这也是本次 SFT 冷启动重点训练的能力。
 
@@ -98,7 +111,7 @@ Spec-o3 将这种过程称为 iMCoT，即 Interleaved Multimodal Chain-of-Though
 
 训练也分成两步。Cold-start SFT 用现成的完整轨迹示范如何观察、调用工具和作答；GRPO 则让模型在训练题上自己完成交互，按最终答案与格式获得奖励。作者公开实现的 SFT 使用 LLaMA-Factory，RL 使用 VeRL；本章把这一过程接到了 PyTRIO。[作者训练说明](https://github.com/Maxwell-Jia/spec-o3#training-pipeline)
 
-原论文基模是 Qwen2.5-VL-3B/7B-Instruct。我们选择 Qwen3.5-4B、LoRA rank 32，所以本文属于更换基模与训练栈后的方法迁移。后面的重点是这套交互与训练过程如何实现，以及我们实际测到了什么。
+原论文基模是 Qwen2.5-VL-3B/7B-Instruct。我们选择 Qwen3.5-4B 和 Qwen3.5-9B、LoRA rank 32，所以本文属于更换基模与训练栈后的方法迁移。后面的重点是这套交互与训练过程如何实现，以及我们实际测到了什么。
 
 ### 快速开始：先把 SFT 跑起来
 
@@ -214,7 +227,7 @@ Cold-start 数据已经包含“思考、工具调用、图片观察、最终回
 
 完整示范轨迹把这些环节连在一起：`<think>` 中写分析，`<tool_call>` 中指定工具和波长区间，工具观察回填后开启下一轮思考，最后用 `<answer>` 包住结论与解释。SFT 对各轮 assistant 的输出进行监督，让模型学习如何按这套协议组织分析和动作，为后续 GRPO 的多轮探索打下基础。
 
-训练由 [train_sft.py](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/09-spec-o3/train_sft.py) 异步执行，使用 `cross_entropy`，只监督 assistant 生成的内容。实际配置是 batch size 4、学习率 `2e-5`、LoRA rank 32、2 个 epoch，共 **424 个训练 step**。每轮结束后计算验证 loss，并保存供后续训练和评测使用的权重。
+训练由 [train_sft.py](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/09-spec-o3/train_sft.py) 异步执行，使用 `cross_entropy`，只监督 assistant 生成的内容。下面保留首轮 4B SFT 的训练记录：batch size 4、学习率 `2e-5`、LoRA rank 32、2 个 epoch，共 **424 个训练 step**。每轮结束后计算验证 loss，并保存供后续训练和评测使用的权重。
 
 ![Spec-o3 cold-start SFT：训练 loss 与每批 assistant 监督 token 数](./images/swanlab-sft.png)
 
@@ -282,9 +295,9 @@ $$
 
 一条轨迹中的 assistant token 共享该轨迹的 advantage。问题、图片、工具观察和程序补入的分隔符只作为上下文，对应的 advantage 为零。随后整批 Datum 交给 PyTRIO 内置 `ppo` loss，裁剪范围为 `[0.8, 1.2]`，每批更新一次。
 
-![Spec-o3 一个 epoch 的 RL 曲线：reward、严格格式合规率、参与更新的 assistant token 数与训练正确率](./images/swanlab-rl.png)
+![Spec-o3 首轮 4B RL epoch 1 的训练曲线：reward、严格格式合规率、参与更新的 assistant token 数与训练正确率](./images/swanlab-rl.png)
 
-完整 RL 曲线与实验配置同样保存在公开的 [SwanLab 实验列表](https://swanlab.cn/@kmno4/agentic-rl-lab-spec-o3/v1/rjj3zx/runs)中。
+这张图保留首轮 **4B RL epoch 1** 的训练过程；新增的 4B、9B epoch 3 独立评测结果列在第 0 节。完整 RL 曲线与实验配置同样保存在公开的 [SwanLab 实验列表](https://swanlab.cn/@kmno4/agentic-rl-lab-spec-o3/v1/rjj3zx/runs)中。
 
 训练曲线里，格式合规率上升比较明显，后段接近 0.95；reward 和训练正确率则在波动中改善，后半段没有持续单调上升。每个 step 遇到的题目不同，所以这些曲线用于观察训练过程，最终表现仍回到固定开发集评测。
 
@@ -308,19 +321,19 @@ SFT 让模型学习“**思考 → 工具调用 → 图片观察 → 继续思�
 - **更方便并行做对照实验。** 后续比较不同学习率、奖励设置或随机种子时，可以分别创建训练任务，同时推进多组实验。各任务的 LoRA 权重和优化器状态独立，由服务端调度共享算力，实验组织不必与某一台 GPU 服务器绑定。[多作业调度说明](https://docs.pytrio.com/docs/clock-cycle)
 - **把时间留给研究问题。** 这次我主要处理的是交错思维链、图文输入、工具观察、reward 和评测规则。修改这些逻辑后，可以继续沿用已有的训练接口、checkpoint 和 SwanLab 记录，逐步验证自己的判断。
 
-本次的实际用量也保留在下面。两个训练会话合计 **¥699.68**，评测与调试会话另计；这里记录的是 Qwen3.5-4B LoRA 实验，与原论文的模型和训练配置不同。
+首轮 4B 实验的实际用量保留在下面：SFT 与 RL epoch 1 两个训练会话合计 **¥699.68**，评测与调试会话另计。这个金额仅对应截图中的两个历史训练会话，新增的 4B、9B epoch 3 训练与评测费用未计入。
 
-![本次 Spec-o3 的 PyTRIO 会话用量与费用，标出 SFT、RL 及评测与调试会话](./images/pytrio-consume.png)
+![首轮 4B Spec-o3 实验的 PyTRIO 会话用量与费用，标出 SFT、RL epoch 1 及评测与调试会话](./images/pytrio-consume.png)
 
 截图中明确标注的两个训练会话如下，M 表示百万 token：
 
 | 会话 | Prefilling | Train | Sample | 费用 |
 | --- | ---: | ---: | ---: | ---: |
 | SFT 冷启动 | 0 | 6.11M | 0 | ¥27.72 |
-| RL | 239.39M | 79.13M | 26.38M | ¥671.96 |
+| 4B RL epoch 1 | 239.39M | 79.13M | 26.38M | ¥671.96 |
 | **这两个训练会话合计** | | | | **¥699.68** |
 
-这次从看论文到完成实验，我只花了**不到一天的时间**。
+首轮 4B 实验从看论文到完成，我只花了**不到一天的时间**。
 
 PyTRIO 最有价值的地方，在与**缩短了从“我想试试这个方法”到“我拿到了可以分析和比较的结果”之间的距离**。先把一个想法跑起来，再增加对照、检查失败轨迹、调整训练方案，这样的迭代节奏对科研很重要。
 
@@ -387,6 +400,8 @@ uv run python train_sft.py \
 
 脚本默认只训练 1 个 epoch，因此这里显式传入 `--epochs 2`。`--model-revision` 默认是 `main`，本次 SFT 记录也使用了这一设置；需要固定 tokenizer 与 image processor 文件时，可传入本章数据准备和评测使用的 `851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a`。
 
+训练 9B 时，将 `--base-model` 改为 `Qwen/Qwen3.5-9B`，并使用独立的 `--run-name`。固定 revision 时应选择对应模型仓库的版本，上面的 commit 仅用于 4B。
+
 训练结束后，保留 epoch 2 对应的 `state_path` 和 `sampler_path`。它们分别用于下一步 RL 和 SFT 模型评测。
 
 ### 8.4 从 SFT state 接着训练 RL
@@ -410,11 +425,13 @@ uv run python train_rl.py \
 
 `--max-tokens` 限制单次生成长度；`--max-seq-len` 限制包含文字、图片与工具历史的总上下文。`--max-turns 8` 是最多 8 轮 assistant 生成，最终答案也占一轮；当前实现最多执行前 7 轮的工具调用。
 
+上面保留首轮 4B 实验的 1 epoch 命令。要从 SFT state 开始训练 3 个 epoch，将 `--epochs` 改为 `3`；训练 9B 时传入 9B SFT 的 `state_path`，脚本会从 checkpoint 恢复对应基模。不同实验使用独立的 `--run-name`。
+
 当前脚本每 100 个累计 rollout step 保存一次 state 和 sampler，epoch 结束时也保存。这个周期保存功能是在首次 RL 实验之后补上的，便于后续运行时保留中间权重。训练日志里同时记录 rollout step 与实际 updates，两者在跳过整批更新时会有差别。
 
-作者公开配置与本次实际训练有以下主要差异：
+作者公开配置与首轮 4B 训练有以下主要差异：
 
-| 项目 | 作者公开配置 | 本次实验 |
+| 项目 | 作者公开配置 | 首轮 4B 实验 |
 | --- | --- | --- |
 | 基模 | Qwen2.5-VL-3B/7B-Instruct | Qwen3.5-4B |
 | 参数更新 | SFT 配置为语言模型全参数更新，冻结视觉部分 | LoRA rank 32 |
@@ -426,19 +443,21 @@ uv run python train_rl.py \
 
 作者参数来自固定提交的 [SFT YAML](https://github.com/Maxwell-Jia/spec-o3/blob/dd6eb9130d9d850cd67b2a6c55e651da08ab28cb/cold_start/examples/spec_o3/qwen2_5_sft_full.yaml) 与 [RL YAML](https://github.com/Maxwell-Jia/spec-o3/blob/dd6eb9130d9d850cd67b2a6c55e651da08ab28cb/reinforcement_learning/recipe/spec_o3/configs/spec_o3.yaml)。本章也未逐项复刻上游 loss 的全部细节，因此这些结果用于观察本地方法迁移，不能直接与论文榜单数值对齐。
 
-### 8.5 评测 Base、SFT 和 RL
+### 8.5 评测 4B Base、SFT，以及 4B / 9B RL
 
 下面保留开头结果表对应的生成预算。将占位符替换成各自的 **sampler_path**：
 
 ```bash
 # Base：不传 model-path，脚本自动追加格式提醒。
 uv run python eval.py \
+    --base-model Qwen/Qwen3.5-4B \
     --output outputs/base-dev \
     --max-tokens 6132 \
     --max-seq-len 16384
 
 # SFT epoch 2。
 uv run python eval.py \
+    --base-model Qwen/Qwen3.5-4B \
     --model-path '<SFT epoch 2 的 sampler_path>' \
     --output outputs/sft-dev \
     --max-tokens 2048 \
@@ -446,13 +465,32 @@ uv run python eval.py \
 
 # SFT → RL epoch 1。
 uv run python eval.py \
+    --base-model Qwen/Qwen3.5-4B \
     --model-path '<RL epoch 1 的 sampler_path>' \
     --output outputs/sft-rl \
+    --max-tokens 6144 \
+    --max-seq-len 16384
+
+# 4B RL epoch 3。
+uv run python eval.py \
+    --base-model Qwen/Qwen3.5-4B \
+    --model-path '<4B RL epoch 3 的 sampler_path>' \
+    --output outputs/rl-4b-e3 \
+    --max-tokens 6144 \
+    --max-seq-len 16384
+
+# 9B RL epoch 3。
+uv run python eval.py \
+    --base-model Qwen/Qwen3.5-9B \
+    --model-path '<9B RL epoch 3 的 sampler_path>' \
+    --output outputs/rl-9b-e3 \
     --max-tokens 6144 \
     --max-seq-len 16384
 ```
 
 `--output` 是评测产物目录，会保存 `metrics.json`、逐样本的 `trajectories.jsonl` 和工具生成的图片。重新评测时换一个目录名，可以保留旧记录。评测默认使用 `bench_dev.jsonl`、并发 16、temperature 0.6、seed 42、最多 8 轮。
+
+`--base-model` 必须与 sampler 权重的基模一致，tokenizer、图像处理器和采样客户端会统一使用这个模型。`--model-revision` 用于选择该模型的 Hugging Face 文件版本；未传时，4B 沿用固定 revision，9B 使用 `main`。
 
 本次 Base 与 SFT 的表格数值来自已有轨迹重算后的 `metrics-reparsed.json`，RL 来自新规则下的 `metrics.json`。当前 `eval.py` 已包含新提取规则，重新运行会直接写入 `metrics.json`。
 
@@ -460,6 +498,7 @@ uv run python eval.py \
 
 ```bash
 uv run python eval.py \
+    --base-model Qwen/Qwen3.5-4B \
     --model-path '<SFT epoch 2 的 sampler_path>' \
     --output outputs/sft-dev-6144 \
     --max-tokens 6144 \
@@ -474,7 +513,7 @@ uv run python eval.py \
 uv run python analysis.py
 ```
 
-脚本将本文的固定结果绘制为 `images/results_comparison.png`，并导出同名矢量 PDF。它不读取新的评测目录；后续得到新结果时，需要同步更新脚本中的数据和图注。
+脚本将本文的五组固定结果绘制为 `images/results_comparison.png`，并导出同名矢量 PDF。四个面板分别比较 Accuracy、Macro F1、严格格式合规率和答对题数；每组都标明模型规模与训练阶段。它不读取新的评测目录；后续得到新结果时，需要同步更新脚本中的数据和图注。
 
 代码阅读可以从数据准备开始，沿着输入、工具交互和训练向下走：
 
