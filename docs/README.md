@@ -41,3 +41,7 @@ npm run docs:preview
 后续 `main` 增加或修改正文后，先在 `doc` 合并最新 `main`，验证构建再推送。建议网站稳定后把网站源码合回 `main`，同时将 workflow 的 `push.branches` 和部署条件改为 `main`、手写网页的编辑链接改为 `edit/main`。这样正文变更会直接触发部署，避免长期维护两条内容分支。
 
 依赖目录、生成正文、复制图片、构建产物及浏览器验证截图均在根目录 `.gitignore` 中排除；`package-lock.json` 必须保留，用于可复现构建。
+
+## 字体
+
+DM Sans 和 IBM Plex Mono 通过 Fontsource 打包为本地静态资源，不依赖 Google Fonts 在线请求。两款字体的 OFL 许可及版权声明位于 `docs/content/public/licenses/`，随站点一同发布；中文采用系统字体。
