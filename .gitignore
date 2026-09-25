@@ -251,3 +251,17 @@ __marimo__/
 # Local experiment tracking artifacts
 swanlog/
 *.swanlab
+
+# Documentation site dependencies and build output
+node_modules/
+docs/.vitepress/cache/
+docs/.vitepress/dist/
+docs/.vitepress/.temp/
+
+# Generated from the original chapter Markdown; run npm run docs:prepare
+docs/content/experiments/*/
+docs/content/public/media/
+
+# Local browser verification artifacts
+output/playwright/
+.playwright-cli/
