@@ -12,7 +12,7 @@ export default defineConfig({
   lastUpdated: false,
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/agentic-rl-lab/favicon.svg' }],
-    ['meta', { name: 'theme-color', content: '#f8f9f5' }],
+    ['meta', { name: 'theme-color', content: '#fdfbf9' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:locale', content: 'zh_CN' }],
   ],
