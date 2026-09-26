@@ -19,7 +19,7 @@ Google and Bing verification tags are intentionally public and remain in the sha
 
 ## Launch verification, 2026-09-26
 
-- The [bilingual Pages deployment](https://github.com/KMnO4-zx/agentic-rl-lab/actions/runs/36214428591) completed successfully. The default branch received the [Chinese and English README entry points](https://github.com/KMnO4-zx/agentic-rl-lab/commit/6f919b6b228c13f10498c37e879cc9dd9be6b022).
+- The [bilingual Pages deployment](https://github.com/KMnO4-zx/agentic-rl-lab/actions/runs/36214428591) and the [code-contrast update](https://github.com/KMnO4-zx/agentic-rl-lab/actions/runs/36214798350) completed successfully. The default branch received the [Chinese and English README entry points](https://github.com/KMnO4-zx/agentic-rl-lab/commit/6f919b6b228c13f10498c37e879cc9dd9be6b022).
 - Build checks passed for 63 HTML files (62 indexable pages plus the 404), 4,379 internal links/assets and 826 searchable sections. Every sitemap URL has a canonical page, a language counterpart and a last-modified date.
 - A live HTTP audit verified all 62 public URLs, their language and canonical metadata, the sitemap, primary CSS/JavaScript and social card. Missing pages return HTTP 404.
 - Browser checks passed for desktop and mobile layouts, article language switching, Chinese and English search, topic/keyword filtering, reset behavior and edit links. The checked production browser session reported zero errors and zero warnings.
@@ -32,11 +32,11 @@ Google and Bing verification tags are intentionally public and remain in the sha
 
 ## Search engine setup
 
-- **Google:** URL-prefix ownership verified through the deployed HTML meta tag. The sitemap submission was accepted. Its initial report showed `Couldn't fetch`; a live Google URL inspection then confirmed `Crawl allowed: Yes` and `Page fetch: Successful` at 11:22 Asia/Shanghai. The sitemap was resubmitted. Check the report again after processing; do not treat submission acceptance as successful sitemap processing or indexing.
+- **Google:** URL-prefix ownership verified through the deployed HTML meta tag. The sitemap submission was accepted. Its report showed `Couldn't fetch`; a live Google URL inspection then confirmed `Crawl allowed: Yes` and `Page fetch: Successful` at 11:22 Asia/Shanghai. The sitemap was resubmitted, but the final report still showed the fetch error. Separate indexing requests for the Chinese and English homepages both succeeded, with Search Console confirming their addition to the priority crawl queue. Check the sitemap report again after processing; do not treat submission acceptance as successful sitemap processing or indexing.
 - **Bing:** ownership verified. The sitemap was accepted and showed `Processing`, with no reported errors or warnings at that point. All 62 Chinese/English URLs were also accepted through URL Submission; the dashboard showed 62 submitted URLs at 11:25 Asia/Shanghai.
-- **Baidu:** pending the owner's profile completion, phone/email verification and platform declaration. No identity information or verification codes were filled on the owner's behalf.
+- **Baidu:** deferred at the owner's request; this release completes Google/Bing setup first. A later connection requires profile completion, phone/email verification and the platform declaration. No identity information or verification codes were filled on the owner's behalf.
 
-Google's performance/indexing reports were still preparing data; Bing reported that initial reports may take up to 48 hours. The Chinese homepage was not yet indexed in Google's launch inspection. This is a new-site baseline, not a count of indexed pages across the whole site.
+Google's performance/indexing reports were still preparing data; Bing reported that initial reports may take up to 48 hours. Both homepages were not yet indexed in Google's launch inspections, before the accepted indexing requests. This is a new-site baseline, not a count of indexed pages across the whole site.
 
 If Google's sitemap report continues to show a fetch error, follow its [sitemap troubleshooting instructions](https://support.google.com/webmasters/answer/7451001?hl=en): inspect the exact URL, confirm live fetch and robots access, then check for a persistent server or processing issue. Avoid repeatedly resubmitting an unchanged sitemap once processing succeeds.
 
