@@ -5,9 +5,9 @@ export const metadata = {
     en: { subtitle: 'An intuition for reinforcement learning losses', seoTitle: 'RL Loss Functions: Importance Sampling, PPO and CISPO', description: 'Understand importance sampling, PPO clipping and CISPO through intuitive examples, equations and the policy updates used in this lab.', tags: ['Foundations', 'Objectives'] },
   },
   grpo: {
-    seoTitle: 'GRPO 原理与代码实战：在 GSM8K 上跑通训练',
+    seoTitle: 'GRPO 代码实战：用 PyTRIO 在 GSM8K 上训练',
     runDescription: '安装依赖、登录 PyTRIO 与 SwanLab，运行 GSM8K 上的 GRPO 训练，了解采样参数、三种 loss 与日志指标。',
-    en: { subtitle: 'Learn from comparisons within a group', seoTitle: 'GRPO Explained: Code and Training Experiments on GSM8K', description: 'Follow GRPO from group sampling and rewards to policy updates on GSM8K, with runnable PyTRIO code and a comparison of three loss functions.', runDescription: 'Install dependencies, log in to PyTRIO and SwanLab, and launch GRPO on GSM8K with sampling settings, three loss options and training metrics.', tags: ['GSM8K', 'Group-relative advantage'] },
+    en: { subtitle: 'Learn from comparisons within a group', seoTitle: 'GRPO with PyTRIO: Code and Training Experiments on GSM8K', description: 'Follow GRPO from group sampling and rewards to policy updates on GSM8K, with runnable PyTRIO code and a comparison of three loss functions.', runDescription: 'Install dependencies, log in to PyTRIO and SwanLab, and launch GRPO on GSM8K with sampling settings, three loss options and training metrics.', tags: ['GSM8K', 'Group-relative advantage'] },
   },
   'general-opd': {
     seoTitle: 'On-Policy Distillation 实战：DeepMath 上的采样、教师打分与 Reverse KL',

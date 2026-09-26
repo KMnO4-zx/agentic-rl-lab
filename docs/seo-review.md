@@ -9,7 +9,7 @@
 - First processing check: 2026-09-28
 - First trend review: 2026-10-24 (28 days after publication)
 
-Each language contains the homepage, experiment catalog, four guides, 14 articles and 11 quick starts. English notes preserve original experiment code, equations and figures. Translation source hashes make content drift a build failure rather than silently publishing stale translations.
+Each language contains the homepage, experiment catalog, six guides, 14 articles and 11 quick starts: 66 indexable pages in total after the brand-topic expansion below. English notes preserve original experiment code, equations and figures. Translation source hashes make content drift a build failure rather than silently publishing stale translations.
 
 ## Engineering acceptance
 
@@ -41,6 +41,25 @@ Google's performance/indexing reports were still preparing data; Bing reported t
 If Google's sitemap report continues to show a fetch error, follow its [sitemap troubleshooting instructions](https://support.google.com/webmasters/answer/7451001?hl=en): inspect the exact URL, confirm live fetch and robots access, then check for a persistent server or processing issue. Avoid repeatedly resubmitting an unchanged sitemap once processing succeeds.
 
 ## Baseline and follow-up
+
+### PyTRIO and Tinker topic expansion, 2026-09-26
+
+Two new guides in both languages connect brand-related searches to useful material:
+
+| Topic | Chinese / English landing pages | Query examples to monitor |
+| --- | --- | --- |
+| PyTRIO tutorials | [/guide/pytrio.html](https://kmno4-zx.github.io/agentic-rl-lab/guide/pytrio.html) / [/en/guide/pytrio.html](https://kmno4-zx.github.io/agentic-rl-lab/en/guide/pytrio.html) | `pytrio`, `pytrio 教程`, `pytrio grpo`, `pytrio reinforcement learning` |
+| Tinker and PyTRIO workflows | [/guide/tinker-pytrio.html](https://kmno4-zx.github.io/agentic-rl-lab/guide/tinker-pytrio.html) / [/en/guide/tinker-pytrio.html](https://kmno4-zx.github.io/agentic-rl-lab/en/guide/tinker-pytrio.html) | `tinker`, `tinker 强化学习`, `tinker pytrio`, `tinker vs pytrio` |
+
+The homepage, sidebar, setup guide and related-reading links lead to the new guides. Homepage, setup and GRPO titles now describe their actual PyTRIO content explicitly. The Tinker guide compares documented concepts with this repository's PyTRIO implementation; it does not claim a validated Tinker port, SDK compatibility or performance comparisons.
+
+The expanded build passed checks for 67 HTML files, 4,859 internal links/assets and 852 searchable sections, with all 66 indexable URLs in the sitemap. Browser checks verified the new homepage links, Chinese/English switching with updated canonical metadata, English Tinker search results and mobile layouts without horizontal overflow or JavaScript page errors. These are engineering checks, not evidence of search visibility. The launch checks above retain the original 62-page baseline.
+
+During the 28-day review, separate exact brand queries (`pytrio`, `tinker`) from queries containing a task or comparison. Record impressions, clicks, landing page and indexing status for each language. New query data is currently unavailable; no rank or traffic improvement has been measured. The first experiment is whether relevant queries begin producing impressions for these pages, not a promised position for a bare brand name.
+
+The content approach follows Google's guidance on [helpful original content](https://developers.google.com/search/docs/fundamentals/creating-helpful-content) and [descriptive page titles](https://developers.google.com/search/docs/appearance/title-link). Keep explanations tied to code and real experiments when expanding these topics.
+
+### Site-wide measurements
 
 Search performance has not been measured before site verification. Missing historical data must be recorded as unavailable, not as zero.
 

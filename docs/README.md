@@ -24,7 +24,7 @@ npm run docs:preview
 ## 内容结构
 
 - `docs/chapters.mjs`：章节、分组、简介与原始 Markdown 路径。
-- `docs/content/guide/`：网站独有的介绍、学习路线、环境准备。
+- `docs/content/guide/`：网站独有的介绍、学习路线、环境准备、算法对照、PyTRIO 教程与 Tinker 工作流对照；英文对应页位于 `docs/content/en/guide/`。
 - `docs/content/experiments/index.md`：可筛选的实验目录。
 - `docs/content/experiments/*/`：自动生成的文章和快速启动，不提交。
 - `docs/content/public/media/`：自动复制的正文配图，不提交。

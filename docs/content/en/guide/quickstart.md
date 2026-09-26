@@ -1,11 +1,13 @@
 ---
-title: Agent RL Environment Setup and Your First GRPO Run
-description: Install repository dependencies, configure PyTRIO and SwanLab, and launch your first GRPO experiment. Includes extra requirements for interactive environments.
+title: PyTRIO Setup and Your First GRPO Training Run
+description: Install the PyTRIO experiment dependencies, log in to the training service and SwanLab, and launch GRPO on GSM8K with the required local and remote resources.
 ---
 
-# Run your first experiment
+# PyTRIO setup and your first GRPO training run
 
 Your local machine handles data, tools and the experiment loop. PyTRIO executes model sampling and training remotely. You need **Python 3.13 or later**, `uv`, and a PyTRIO account with access to training resources.
+
+For a map of the experiments, read the [PyTRIO tutorials](./pytrio.html). Readers familiar with Tinker can start with the [training workflow comparison](./tinker-pytrio.html).
 
 ## Get the code and install dependencies
 

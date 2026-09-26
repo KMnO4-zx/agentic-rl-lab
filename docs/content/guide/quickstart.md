@@ -1,11 +1,13 @@
 ---
-title: 环境准备
-description: 安装仓库依赖、配置训练服务并启动第一个 GRPO 实验。
+title: PyTRIO 安装与入门：跑通第一个 GRPO 实验
+description: 安装 PyTRIO 实验依赖、登录训练服务与 SwanLab，并在 GSM8K 上启动首个 GRPO 训练，了解本地环境和远程资源要求。
 ---
 
-# 跑通第一个实验
+# PyTRIO 安装与入门：跑通第一个 GRPO 实验
 
 本地负责数据处理、工具执行和训练循环，模型采样与训练通过 PyTRIO 远程执行。开始前，需要 Python **3.13 或以上**、`uv`，以及可用的 PyTRIO 账户和训练资源。
+
+想先了解各个实验的用途，可以阅读 [PyTRIO 教程与实战路线](./pytrio.html)；熟悉 Tinker 的读者可以从[训练工作流对照](./tinker-pytrio.html)进入。
 
 ## 获取代码与安装依赖
 

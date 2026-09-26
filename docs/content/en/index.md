@@ -1,8 +1,8 @@
 ---
 layout: page
 sidebar: false
-title: Hands-on LLM and Agent Reinforcement Learning
-description: Learn GRPO, DAPO, GSPO, tool use and multimodal agent training through paper walkthroughs, runnable code, experiment results and implementation limits.
+title: LLM and Agent Reinforcement Learning with PyTRIO
+description: Explore GRPO, DAPO, GSPO, tool use and multimodal training with PyTRIO code and experiment notes, plus a training workflow comparison for Tinker users.
 ---
 
 <LabHome />

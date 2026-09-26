@@ -24,6 +24,10 @@ function navigation(locale: 'zh' | 'en') {
         { text: en ? 'GRPO, DAPO & GSPO' : 'GRPO、DAPO 与 GSPO', link: `${prefix}/guide/grpo-dapo-gspo.html` },
         { text: en ? 'All experiments' : '全部实验', link: `${prefix}/experiments/` },
       ] },
+      { text: en ? 'Training platforms' : '训练平台', items: [
+        { text: en ? 'PyTRIO tutorials' : 'PyTRIO 实战教程', link: `${prefix}/guide/pytrio.html` },
+        { text: en ? 'Tinker & PyTRIO workflows' : 'Tinker 与 PyTRIO', link: `${prefix}/guide/tinker-pytrio.html` },
+      ] },
       ...localizedGroups(locale).map(g => ({
         text: `${g.number} · ${g.label}`, collapsed: false,
         items: chapters.filter(c => c.group === g.id).map(c => ({
@@ -56,11 +60,11 @@ function navigation(locale: 'zh' | 'en') {
 
 export default defineConfig({
   title: 'Agentic RL Lab',
-  description: 'LLM 与 Agent 强化学习实战笔记：GRPO、DAPO、GSPO、工具调用、多模态训练，以及可运行代码和真实实验记录。',
+  description: '基于 PyTRIO 的 LLM 与 Agent 强化学习实战笔记，涵盖 GRPO、DAPO、GSPO、工具调用、多模态训练与 Tinker 工作流对照。',
   lang: 'zh-CN', base: siteBase, srcDir: './content', cleanUrls: false, lastUpdated: false,
   locales: {
     root: { label: '简体中文', lang: 'zh-CN', themeConfig: navigation('zh') },
-    en: { label: 'English', lang: 'en', description: 'Hands-on LLM and agent reinforcement learning: GRPO, DAPO, GSPO, tool use and multimodal training, with runnable code and experiment notes.', themeConfig: navigation('en') },
+    en: { label: 'English', lang: 'en', description: 'Hands-on LLM and agent reinforcement learning with PyTRIO, including GRPO, DAPO, GSPO, tool use, multimodal training and Tinker workflow notes.', themeConfig: navigation('en') },
   },
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: `${siteBase}favicon.svg` }],
