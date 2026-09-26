@@ -78,7 +78,7 @@ export default defineConfig({
   },
   markdown: {
     math: true, image: { lazyLoading: true }, anchor: { slugify: slug },
-    theme: { light: 'github-light', dark: 'github-dark' },
+    theme: { light: 'github-light-high-contrast', dark: 'github-dark' },
     config(md) {
       const renderImage = md.renderer.rules.image!
       md.renderer.rules.image = (tokens, idx, options, env, self) => {
