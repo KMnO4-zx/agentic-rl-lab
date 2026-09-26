@@ -1,22 +1,25 @@
 <script setup>
 import { computed } from 'vue'
 import { useData, withBase } from 'vitepress'
-import { chapters, chapterLink, repoUrl } from '../../../chapters.mjs'
+import { chapterLink, repoUrl } from '../../../chapters.mjs'
+import { useLocale } from '../composables.js'
 import LabIcon from './LabIcon.vue'
 const { frontmatter } = useData()
-const chapter = computed(() => chapters.find(c => c.id === frontmatter.value.chapter))
+const { t, locale, chapters } = useLocale()
+const chapter = computed(() => chapters.value.find(c => c.id === frontmatter.value.chapter))
 </script>
 
 <template>
   <header v-if="chapter" class="article-intro">
     <p class="eyebrow">LAB {{ chapter.number }} <span>/</span> {{ frontmatter.group }}</p>
-    <h1 id="article-title">{{ chapter.title }}<span>{{ frontmatter.isRun ? '快速启动' : chapter.subtitle }}</span></h1>
-    <p class="article-description">{{ chapter.description }}</p>
-    <div class="article-meta"><span><LabIcon name="book" :size="15" /> 约 {{ frontmatter.readingTime }} 分钟</span><span v-for="tag in chapter.tags" :key="tag" class="article-tag">{{ tag }}</span></div>
+    <h1 id="article-title">{{ chapter.title }}<span>{{ frontmatter.isRun ? t('快速启动', 'Quick start') : chapter.subtitle }}</span></h1>
+    <p class="article-description">{{ frontmatter.description }}</p>
+    <div class="article-meta"><span><LabIcon name="book" :size="15" /> {{ t('约', 'About') }} {{ frontmatter.readingTime }} {{ t('分钟', 'min') }}</span><a :href="repoUrl.replace('/agentic-rl-lab', '')" rel="author">{{ frontmatter.author }}</a><span>{{ t('更新于', 'Updated') }} <time :datetime="frontmatter.modified">{{ frontmatter.modified }}</time></span><span v-for="tag in chapter.tags" :key="tag" class="article-tag">{{ tag }}</span></div>
     <div class="article-actions">
-      <a v-if="chapter.start && !frontmatter.isRun" :href="withBase(`${chapterLink(chapter)}run.html`)"><LabIcon name="flask" :size="16" /> 快速启动 <span>→</span></a>
-      <a v-if="frontmatter.isRun" :href="withBase(chapterLink(chapter))"><LabIcon name="book" :size="16" /> 阅读算法拆解 <span>→</span></a>
-      <a :href="`${repoUrl}/tree/main/${chapter.source.slice(0, chapter.source.lastIndexOf('/'))}`" target="_blank" rel="noreferrer"><LabIcon name="code" :size="16" /> 查看代码 <span>↗</span></a>
+      <a v-if="chapter.start && !frontmatter.isRun" :href="withBase(`${chapterLink(chapter, locale)}run.html`)"><LabIcon name="flask" :size="16" /> {{ t('快速启动', 'Quick start') }} <span>→</span></a>
+      <a v-if="frontmatter.isRun" :href="withBase(chapterLink(chapter, locale))"><LabIcon name="book" :size="16" /> {{ t('阅读算法拆解', 'Read the method') }} <span>→</span></a>
+      <a :href="`${repoUrl}/tree/main/${chapter.source.slice(0, chapter.source.lastIndexOf('/'))}`" target="_blank" rel="noreferrer"><LabIcon name="code" :size="16" /> {{ t('查看代码', 'View code') }} <span>↗</span></a>
     </div>
   </header>
+  <p v-else-if="frontmatter.modified" class="guide-meta"><a href="https://github.com/KMnO4-zx" rel="author">{{ frontmatter.author }}</a> · {{ t('更新于', 'Updated') }} <time :datetime="frontmatter.modified">{{ frontmatter.modified }}</time></p>
 </template>

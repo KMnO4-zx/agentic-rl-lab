@@ -265,3 +265,6 @@ docs/content/public/media/
 # Local browser verification artifacts
 output/playwright/
 .playwright-cli/
+
+# Generated English chapter pages; reviewed translations live in docs/translations/
+docs/content/en/experiments/*/

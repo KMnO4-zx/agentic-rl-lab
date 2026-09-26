@@ -1,3 +1,4 @@
+import { metadata, englishGroups } from './metadata.mjs'
 // The only chapter registry. Article bodies remain in their original directories.
 export const groups = [
   { id: 'foundations', label: '基础与优化', note: '理解一次策略更新', number: '01' },
@@ -24,7 +25,9 @@ export const chapters = [
 ]
 
 export const repoUrl = 'https://github.com/KMnO4-zx/agentic-rl-lab'
-export const chapterLink = (chapter) => `/experiments/${chapter.id}/`
+export const chapterLink = (chapter, locale = 'zh') => `${locale === 'en' ? '/en' : ''}/experiments/${chapter.id}/`
+export const localizedChapters = (locale = 'zh') => chapters.map(c => ({ ...c, ...metadata[c.id], ...(locale === 'en' ? metadata[c.id].en : {}) }))
+export const localizedGroups = (locale = 'zh') => groups.map(g => ({ ...g, ...(locale === 'en' ? englishGroups[g.id] : {}) }))
 
 // The website supplies its own title treatment; retain all instructional/result figures.
 export const articleCovers = {

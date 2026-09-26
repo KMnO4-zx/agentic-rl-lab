@@ -45,3 +45,13 @@ npm run docs:preview
 ## 字体
 
 DM Sans 和 IBM Plex Mono 通过 Fontsource 打包为本地静态资源，不依赖 Google Fonts 在线请求。两款字体的 OFL 许可及版权声明位于 `docs/content/public/licenses/`，随站点一同发布；中文采用系统字体。
+
+## 中英文内容与 SEO
+
+中文保留原地址，英文放在 `/en/`。两种语言各有独立站内搜索、导航、目录和完整正文，文章间可以切换语言。`docs/metadata.mjs` 维护面向搜索的标题、文章/快速启动的独立简介和英文目录文案。
+
+英文正文位于 `docs/translations/en/`，按照对应中文文件的相对路径解析图片和代码链接。`docs/translations/manifest.json` 记录中文来源的 SHA-256。更新原文后，需要检查并同步英文译文，再更新对应 hash；构建会拒绝未同步的内容。代码块、数学表达式和原始结果图沿用原文，正文翻译可以单独编辑。英文标题保留对应中文章节的锚点，以支持深链接与语言切换。
+
+`docs/.vitepress/seo.mjs` 为页面生成 canonical、双向 hreflang、Open Graph、Twitter 卡片和文章/面包屑结构化数据；这些元数据也会随客户端导航更新。原文日期从 Git 历史读取，Actions 使用完整历史，避免把每次部署都当作文章更新。英文首次上线日期由翻译清单记录。
+
+分享图片为 `docs/content/public/social-card.png`，可编辑源文件为同目录的 SVG。Google 与 Bing 验证标签由各自站长后台提供，保留在配置中以维持验证状态。首次收录与后续效果复查见 [SEO review record](./seo-review.md)。

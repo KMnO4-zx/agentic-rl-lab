@@ -3,6 +3,7 @@ import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { load } from 'cheerio'
 import { chapters } from '../../docs/chapters.mjs'
+import { siteUrl, routePath } from '../../docs/site.mjs'
 
 const dist = fileURLToPath(new URL('../../docs/.vitepress/dist/', import.meta.url))
 const base = '/agentic-rl-lab/'
@@ -17,27 +18,68 @@ async function walk(directory) {
 }
 await walk(dist)
 const chunks = path.join(dist, 'assets/chunks')
-const searchFile = (await readdir(chunks)).find(name => name.startsWith('@localSearchIndexroot.') && name.endsWith('.js'))
-if (!searchFile) throw new Error('Missing local search index')
-const searchIndex = JSON.parse((await import(pathToFileURL(path.join(chunks, searchFile)).href)).default)
-for (const [key, destination] of Object.entries(searchIndex.documentIds)) {
-  const url = new URL(destination, 'https://docs.local')
-  const file = path.join(dist, decodeURIComponent(url.pathname.slice(base.length)), url.pathname.endsWith('/') ? 'index.html' : '')
-  const target = documents.get(file)
-  if (!target) errors.add(`Search links to missing page: ${destination}`)
-  else if (url.hash && !target('[id]').toArray().some(el => target(el).attr('id') === decodeURIComponent(url.hash.slice(1)))) errors.add(`Search links to missing anchor: ${destination}`)
-  if (!searchIndex.storedFields[key]?.title) errors.add(`Search result lacks title: ${destination}`)
+let searchSections = 0
+for (const locale of ['root', 'en']) {
+  const prefix = locale === 'en' ? 'en/' : ''
+  const searchFile = (await readdir(chunks)).find(name => name.startsWith(`@localSearchIndex${locale}.`) && name.endsWith('.js'))
+  if (!searchFile) throw new Error(`Missing ${locale} local search index`)
+  const searchIndex = JSON.parse((await import(pathToFileURL(path.join(chunks, searchFile)).href)).default)
+  searchSections += searchIndex.documentCount
+  for (const [key, destination] of Object.entries(searchIndex.documentIds)) {
+    const url = new URL(destination, 'https://docs.local')
+    const file = path.join(dist, decodeURIComponent(url.pathname.slice(base.length)), url.pathname.endsWith('/') ? 'index.html' : '')
+    const target = documents.get(file)
+    if (!target) errors.add(`Search links to missing page: ${destination}`)
+    else if (url.hash && !target('[id]').toArray().some(el => target(el).attr('id') === decodeURIComponent(url.hash.slice(1)))) errors.add(`Search links to missing anchor: ${destination}`)
+    if (!searchIndex.storedFields[key]?.title) errors.add(`Search result lacks title: ${destination}`)
+    if (url.pathname.startsWith(base + 'en/') !== (locale === 'en')) errors.add(`Search index mixes languages: ${destination}`)
+  }
+  for (const chapter of chapters) {
+    const file = path.join(dist, prefix, 'experiments', chapter.id, 'index.html')
+    if (!documents.has(file)) errors.add(`Missing ${locale} chapter: ${chapter.id}`)
+    if (chapter.start && !documents.has(path.join(dist, prefix, 'experiments', chapter.id, 'run.html'))) errors.add(`Missing ${locale} quickstart: ${chapter.id}`)
+    if (!Object.values(searchIndex.documentIds).includes(`${base}${prefix}experiments/${chapter.id}/#article-title`)) errors.add(`Chapter title missing from ${locale} search: ${chapter.id}`)
+  }
 }
-for (const chapter of chapters) {
-  const file = path.join(dist, 'experiments', chapter.id, 'index.html')
-  if (!documents.has(file)) errors.add(`Missing chapter: ${chapter.id}`)
-  if (chapter.start && !documents.has(path.join(dist, 'experiments', chapter.id, 'run.html'))) errors.add(`Missing quickstart: ${chapter.id}`)
-  if (!Object.values(searchIndex.documentIds).includes(`${base}experiments/${chapter.id}/#article-title`)) errors.add(`Chapter title missing from search: ${chapter.id}`)
-}
+const titles = new Map()
+const descriptions = new Map()
+const sitemap = load(await readFile(path.join(dist, 'sitemap.xml'), 'utf8'), { xml: true })
+const locations = sitemap('url > loc').map((_, element) => sitemap(element).text()).get()
+const canonicalUrls = new Set()
 let links = 0
 for (const [file, $] of documents) {
   const relative = path.relative(dist, file)
   if (!$('title').text()) errors.add(`${relative}: no title`)
+  if (relative !== '404.html') {
+    const normalized = relative.replace(/(^|\/)index\.html$/, '$1')
+    const canonical = siteUrl + normalized
+    canonicalUrls.add(canonical)
+    if ($('link[rel="canonical"]').length !== 1 || $('link[rel="canonical"]').attr('href') !== canonical) errors.add(`${relative}: incorrect canonical`)
+    const description = $('meta[name="description"]').attr('content')
+    if (!description) errors.add(`${relative}: missing description`)
+    for (const [value, registry, label] of [[$('head > title').text(), titles, 'title'], [description, descriptions, 'description']]) {
+      if (registry.has(value)) errors.add(`${relative}: duplicate ${label} with ${registry.get(value)}`)
+      registry.set(value, relative)
+    }
+    const en = relative.startsWith('en/')
+    if ($('html').attr('lang') !== (en ? 'en' : 'zh-CN')) errors.add(`${relative}: incorrect html language`)
+    const original = normalized.replace(/^en\//, '')
+    for (const [language, expected] of [['zh-CN', siteUrl + original], ['en', siteUrl + 'en/' + original], ['x-default', siteUrl + original]]) {
+      if ($(`link[rel="alternate"][hreflang="${language}"]`).attr('href') !== expected) errors.add(`${relative}: invalid ${language} alternate`)
+      const local = expected.slice(siteUrl.length)
+      const target = path.join(dist, local, local.endsWith('/') || !local ? 'index.html' : '')
+      if (!documents.has(target)) errors.add(`${relative}: alternate points to missing page: ${expected}`)
+    }
+    if (($('meta[name="robots"]').attr('content') || '').includes('noindex')) errors.add(`${relative}: indexable page has noindex`)
+    if ($('meta[property="og:url"]').attr('content') !== canonical) errors.add(`${relative}: incorrect Open Graph URL`)
+    for (const property of ['og:title', 'og:description', 'og:image', 'og:locale']) if (!$(`meta[property="${property}"]`).attr('content')) errors.add(`${relative}: missing ${property}`)
+    const schemas = $('script[type="application/ld+json"]').toArray().map(el => { try { return JSON.parse($(el).text()) } catch { errors.add(`${relative}: invalid JSON-LD`); return {} } })
+    if (!schemas.length) errors.add(`${relative}: missing structured data`)
+    for (const schema of schemas.filter(s => s['@type'] === 'BlogPosting')) {
+      if (schema.url !== canonical || !schema.author?.name || !Number.isFinite(Date.parse(schema.dateModified)) || Date.parse(schema.dateModified) < Date.parse(schema.datePublished)) errors.add(`${relative}: invalid article metadata`)
+    }
+  } else if ($('meta[name="robots"]').attr('content') !== 'noindex') errors.add('404 must be noindex')
+
   if (relative !== '404.html' && $('h1').length !== 1) errors.add(`${relative}: expected one h1, got ${$('h1').length}`)
   if ($('mjx-merror, [data-mjx-error]').length) errors.add(`${relative}: invalid math`)
   const current = new URL(base + relative, 'https://docs.local')
@@ -57,7 +99,10 @@ for (const [file, $] of documents) {
     links++
   }
 }
+if (new Set(locations).size !== locations.length) errors.add('Sitemap contains duplicate URLs')
+for (const url of locations) if (!canonicalUrls.has(url)) errors.add(`Sitemap URL has no canonical page: ${url}`)
+for (const url of canonicalUrls) if (!locations.includes(url)) errors.add(`Canonical page missing from sitemap: ${url}`)
 if (errors.size) {
   console.error([...errors].join('\n'))
   process.exitCode = 1
-} else console.log(`Verified ${documents.size} HTML pages, ${links} internal links/assets and ${searchIndex.documentCount} search sections, including all ${chapters.length} chapters, headings and math.`)
+} else console.log(`Verified ${documents.size} HTML pages, ${links} internal links/assets and ${searchSections} search sections, including both languages, ${chapters.length} chapters per language, canonical URLs, hreflang, unique metadata, structured data and sitemap coverage.`)

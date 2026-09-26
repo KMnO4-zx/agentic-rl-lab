@@ -30,6 +30,8 @@
   <a href="https://github.com/KMnO4-zx/agentic-rl-lab/issues/13">Click to view the group QR code</a>
 </p>
 
+📖 **Read online:** [English handbook](https://kmno4-zx.github.io/agentic-rl-lab/en/) · [简体中文](https://kmno4-zx.github.io/agentic-rl-lab/)
+
 ## Introduction
 
 This is a lab notebook and tutorial-style repository. I use [PyTRIO](https://pytrio.com) to reproduce a set of reinforcement learning algorithms related to LLM / Agent RL, with three goals in mind:
@@ -47,22 +49,22 @@ If you have a promising Agentic-RL idea and want to turn it into a paper or a pr
 
 ## Table of Contents
 
-| Chapter | Topic | Content |
-| --- | --- | --- |
-| [Ch. 0](./00-loss-function/readme.md) | Loss Function | An intuitive explanation of what `importance_sampling`, `ppo`, and `cispo` are each optimizing |
-| [Ch. 1](./01-grpo/readme.md) | GRPO | Reproduce GRPO on GSM8K and compare the `importance_sampling` / `ppo` / `cispo` losses |
-| [Ch. 2](./02-opd/general-opd/readme.md) | General OPD | A minimal closed loop on DeepMath-103K: Student sampling, Teacher scoring, and reverse KL |
-| [Ch. 2](./02-opd/readme.md) | Medical OPD | Starting from Medical SFT, boost medical capability with SAR-OPD and IDT-OPD while preserving general ability |
-| [Ch. 3](./03-search-r1/readme.md) | Search-R1 | Reproduce multi-turn search RL with Qwen3.5-4B, PyTRIO, and switchable online search backends |
-| [Ch. 4](./04-opsd/readme.md) | OPSD | Distill the Student's self-sampled trajectories with a fixed step-0 Teacher |
-| [Ch. 5](./05-retool/readme.md) | ReTool | Reproduce code-interleaved Agentic RL with Qwen3.5-4B, PyTRIO, and a local code sandbox |
-| [Ch. 6](./06-dapo/readme.md) | DAPO | Dissect the four core improvements and measure the real time cost of Dynamic Sampling in training |
-| [Ch. 7](./07-gspo/readme.md) | GSPO | Lift the importance ratio and clipping from the token level to the sequence level |
-| [Ch. 8](./08-alfworld/readme.md) | ALFWorld | Train a household agent with 12K-token long trajectories, a real TextWorld environment, and group-relative advantage |
-| [Ch. 9](./09-vision-grpo/readme.md) | Vision GRPO | Add image inputs on GeoQA and train Qwen3.5-4B to solve geometry multiple-choice questions with rule-based rewards |
-| [Ch. 9](./09-tempo/readme.md) | TEMPO | Algorithm-level reproduction of macro-step optimization with a generative critic |
-| [Ch. 9](./09-AgentOPSD/readme.md) | AgentOPSD | Use a skill-guided Self-Teacher for turn-level credit assignment |
-| [Ch. 9.4](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/09-spec-o3/readme.md) | Spec-o3 | Find stars with reinforcement learning: use SFT + GRPO to interleave spectral inspection, reasoning, and tool use |
+| Chapter | Topic | Content | Web edition |
+| --- | --- | --- | --- |
+| [Ch. 0](./00-loss-function/readme.md) | Loss Function | An intuitive explanation of what `importance_sampling`, `ppo`, and `cispo` are each optimizing | [Read](https://kmno4-zx.github.io/agentic-rl-lab/en/experiments/loss-functions/) |
+| [Ch. 1](./01-grpo/readme.md) | GRPO | Reproduce GRPO on GSM8K and compare the `importance_sampling` / `ppo` / `cispo` losses | [Read](https://kmno4-zx.github.io/agentic-rl-lab/en/experiments/grpo/) |
+| [Ch. 2](./02-opd/general-opd/readme.md) | General OPD | A minimal closed loop on DeepMath-103K: Student sampling, Teacher scoring, and reverse KL | [Read](https://kmno4-zx.github.io/agentic-rl-lab/en/experiments/general-opd/) |
+| [Ch. 2](./02-opd/readme.md) | Medical OPD | Starting from Medical SFT, boost medical capability with SAR-OPD and IDT-OPD while preserving general ability | [Read](https://kmno4-zx.github.io/agentic-rl-lab/en/experiments/medical-opd/) |
+| [Ch. 3](./03-search-r1/readme.md) | Search-R1 | Reproduce multi-turn search RL with Qwen3.5-4B, PyTRIO, and switchable online search backends | [Read](https://kmno4-zx.github.io/agentic-rl-lab/en/experiments/search-r1/) |
+| [Ch. 4](./04-opsd/readme.md) | OPSD | Distill the Student's self-sampled trajectories with a fixed step-0 Teacher | [Read](https://kmno4-zx.github.io/agentic-rl-lab/en/experiments/opsd/) |
+| [Ch. 5](./05-retool/readme.md) | ReTool | Reproduce code-interleaved Agentic RL with Qwen3.5-4B, PyTRIO, and a local code sandbox | [Read](https://kmno4-zx.github.io/agentic-rl-lab/en/experiments/retool/) |
+| [Ch. 6](./06-dapo/readme.md) | DAPO | Dissect the four core improvements and measure the real time cost of Dynamic Sampling in training | [Read](https://kmno4-zx.github.io/agentic-rl-lab/en/experiments/dapo/) |
+| [Ch. 7](./07-gspo/readme.md) | GSPO | Lift the importance ratio and clipping from the token level to the sequence level | [Read](https://kmno4-zx.github.io/agentic-rl-lab/en/experiments/gspo/) |
+| [Ch. 8](./08-alfworld/readme.md) | ALFWorld | Train a household agent with 12K-token long trajectories, a real TextWorld environment, and group-relative advantage | [Read](https://kmno4-zx.github.io/agentic-rl-lab/en/experiments/alfworld/) |
+| [Ch. 9](./09-vision-grpo/readme.md) | Vision GRPO | Add image inputs on GeoQA and train Qwen3.5-4B to solve geometry multiple-choice questions with rule-based rewards | [Read](https://kmno4-zx.github.io/agentic-rl-lab/en/experiments/vision-grpo/) |
+| [Ch. 9](./09-tempo/readme.md) | TEMPO | Algorithm-level reproduction of macro-step optimization with a generative critic | [Read](https://kmno4-zx.github.io/agentic-rl-lab/en/experiments/tempo/) |
+| [Ch. 9](./09-AgentOPSD/readme.md) | AgentOPSD | Use a skill-guided Self-Teacher for turn-level credit assignment | [Read](https://kmno4-zx.github.io/agentic-rl-lab/en/experiments/agentopsd/) |
+| [Ch. 9.4](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/09-spec-o3/readme.md) | Spec-o3 | Find stars with reinforcement learning: use SFT + GRPO to interleave spectral inspection, reasoning, and tool use | [Read](https://kmno4-zx.github.io/agentic-rl-lab/en/experiments/spec-o3/) |
 
 ## Quick Start
 
@@ -74,7 +76,7 @@ cd agentic-rl-lab
 uv sync
 ```
 
-For Spec-o3 data preparation, SFT, GRPO, evaluation, and plotting commands, see the [Spec-o3 Quick Start](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/09-spec-o3/start.md) (in Chinese).
+For Spec-o3 data preparation, SFT, GRPO, evaluation, and plotting commands, see the [Spec-o3 Quick Start](https://kmno4-zx.github.io/agentic-rl-lab/en/experiments/spec-o3/run.html).
 
 New Spec-o3 RL epoch 3 results on the same 256 development examples: Qwen3.5-4B answers **175 correctly (68.36%)**, and Qwen3.5-9B answers **191 correctly (74.61%)**, with Macro F1 scores of **70.93% / 75.94%**, respectively. See the [Spec-o3 article](./09-spec-o3/readme.md) for the full comparison and evaluation settings.
 

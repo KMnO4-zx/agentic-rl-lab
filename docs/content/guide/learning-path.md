@@ -1,9 +1,9 @@
 ---
-title: 学习路线
+title: Agentic RL 学习路线：从 GRPO 到工具调用与多模态
 description: 从损失函数和 GRPO 开始，逐步探索蒸馏、工具交互和多模态强化学习。
 ---
 
-# 找到你的实验起点
+# Agentic RL 学习路线
 
 可以按下面的顺序走，也可以带着自己的问题进入某个章节。先跑通一个小实验，再改一个变量，通常比一口气读完所有论文更容易建立直觉。
 
@@ -11,7 +11,7 @@ description: 从损失函数和 GRPO 开始，逐步探索蒸馏、工具交互�
 
 **[Loss Functions](/experiments/loss-functions/) → [GRPO](/experiments/grpo/) → [DAPO](/experiments/dapo/) → [GSPO](/experiments/gspo/)**
 
-先理解 logprob、重要性比率与 advantage。用 GRPO 走通一次训练循环后，再观察动态采样、裁剪与序列级目标分别改变了什么。
+先理解 logprob、重要性比率与 advantage。可以先用[GRPO、DAPO 与 GSPO 对照](./grpo-dapo-gspo)了解这三个章节各自覆盖的内容。用 GRPO 走通一次训练循环后，再观察动态采样、裁剪与序列级目标分别改变了什么。
 
 ::: tip 第一个可以动手的改动
 在 GRPO 中保持其他参数一致，切换 `importance_sampling`、`ppo` 与 `cispo`，对照训练行为。具体运行入口见 [GRPO 快速启动](/experiments/grpo/run)。
