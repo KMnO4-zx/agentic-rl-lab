@@ -49,22 +49,22 @@
 
 ## 文章目录
 
-| 篇章 | 主题 | 内容 | 网页版 |
-| --- | --- | --- | --- |
-| [第 0 篇](./00-loss-function/readme.md) | Loss Function | 用直觉解释 `importance_sampling`、`ppo`、`cispo` 分别在优化什么 | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/loss-functions/) |
-| [第 1 篇](./01-grpo/readme.md) | GRPO | 复现 GSM8K 上的 GRPO，并比较 `importance_sampling` / `ppo` / `cispo` 三个 loss | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/grpo/) |
-| [第 2 篇](./02-opd/general-opd/readme.md) | General OPD | 用 DeepMath-103K 跑通 Student 采样、Teacher 打分与 reverse KL 的最小闭环 | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/general-opd/) |
-| [第 2 篇](./02-opd/readme.md) | Medical OPD | 从 Medical SFT 出发，用 SAR-OPD 和 IDT-OPD 增强医疗能力，同时保持通用能力 | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/medical-opd/) |
-| [第 3 篇](./03-search-r1/readme.md) | Search-R1 | 用 Qwen3.5-4B、PyTRIO 和可切换的在线搜索后端复现多轮搜索 RL | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/search-r1/) |
-| [第 4 篇](./04-opsd/readme.md) | OPSD | 用固定的 step-0 Teacher 蒸馏 Student 自采样轨迹 | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/opsd/) |
-| [第 5 篇](./05-retool/readme.md) | ReTool | 用 Qwen3.5-4B、PyTRIO 和本地代码沙箱复现代码交织的 Agentic RL | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/retool/) |
-| [第 6 篇](./06-dapo/readme.md) | DAPO | 拆解四项核心改进，并记录 Dynamic Sampling 在真实训练中的时间成本 | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/dapo/) |
-| [第 7 篇](./07-gspo/readme.md) | GSPO | 将重要性比率与裁剪从 token 级提升到 sequence 级 | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/gspo/) |
-| [第 8 篇](./08-alfworld/readme.md) | ALFWorld | 用 12K 长轨迹、真实 TextWorld 环境和 group-relative advantage 训练家务 Agent | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/alfworld/) |
-| [第 9 篇](./09-vision-grpo/readme.md) | Vision GRPO | 在 GeoQA 上接入图片输入，解决几何数学题 | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/vision-grpo/) |
-| [第 9 篇](./09-tempo/readme.md) | TEMPO | 算法级复现 macro-step 优化与生成式 critic | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/tempo/) |
-| [第 9 篇](./09-AgentOPSD/readme.md) | AgentOPSD | 用带 Skill 的 Self-Teacher 分配 turn-level credit | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/agentopsd/) |
-| [第 9 篇](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/09-spec-o3/readme.md) | Spec-o3 | 用强化学习找星星：通过 SFT + GRPO，让模型边看光谱、边思考、边调用工具 | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/spec-o3/) |
+| 主题 | 内容 | 在线阅读 |
+| --- | --- | --- |
+| [Loss Function](./00-loss-function/readme.md) | 用直觉解释 `importance_sampling`、`ppo`、`cispo` 分别在优化什么 | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/loss-functions/) |
+| [GRPO](./01-grpo/readme.md) | 复现 GSM8K 上的 GRPO，并比较 `importance_sampling` / `ppo` / `cispo` 三个 loss | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/grpo/) |
+| [General OPD](./02-opd/general-opd/readme.md) | 用 DeepMath-103K 跑通 Student 采样、Teacher 打分与 reverse KL 的最小闭环 | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/general-opd/) |
+| [Medical OPD](./02-opd/readme.md) | 从 Medical SFT 出发，用 SAR-OPD 和 IDT-OPD 增强医疗能力，同时保持通用能力 | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/medical-opd/) |
+| [Search-R1](./03-search-r1/readme.md) | 用 Qwen3.5-4B、PyTRIO 和可切换的在线搜索后端复现多轮搜索 RL | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/search-r1/) |
+| [OPSD](./04-opsd/readme.md) | 用固定的 step-0 Teacher 蒸馏 Student 自采样轨迹 | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/opsd/) |
+| [ReTool](./05-retool/readme.md) | 用 Qwen3.5-4B、PyTRIO 和本地代码沙箱复现代码交织的 Agentic RL | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/retool/) |
+| [DAPO](./06-dapo/readme.md) | 拆解四项核心改进，并记录 Dynamic Sampling 在真实训练中的时间成本 | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/dapo/) |
+| [GSPO](./07-gspo/readme.md) | 将重要性比率与裁剪从 token 级提升到 sequence 级 | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/gspo/) |
+| [ALFWorld](./08-alfworld/readme.md) | 用 12K 长轨迹、真实 TextWorld 环境和 group-relative advantage 训练家务 Agent | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/alfworld/) |
+| [Vision GRPO](./09-vision-grpo/readme.md) | 在 GeoQA 上接入图片输入，解决几何数学题 | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/vision-grpo/) |
+| [TEMPO](./09-tempo/readme.md) | 算法级复现 macro-step 优化与生成式 critic | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/tempo/) |
+| [AgentOPSD](./09-AgentOPSD/readme.md) | 用带 Skill 的 Self-Teacher 分配 turn-level credit | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/agentopsd/) |
+| [Spec-o3](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/09-spec-o3/readme.md) | 用强化学习找星星：通过 SFT + GRPO，让模型边看光谱、边思考、边调用工具 | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/spec-o3/) |
 
 ## 快速启动
 
