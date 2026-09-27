@@ -49,7 +49,7 @@
 
 ## 文章目录
 
-| 主题 | 内容 | 在线阅读 |
+| 主题 | 内容 | 在线版 |
 | --- | --- | --- |
 | [Loss Function](./00-loss-function/readme.md) | 用直觉解释 `importance_sampling`、`ppo`、`cispo` 分别在优化什么 | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/loss-functions/) |
 | [GRPO](./01-grpo/readme.md) | 复现 GSM8K 上的 GRPO，并比较 `importance_sampling` / `ppo` / `cispo` 三个 loss | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/grpo/) |
