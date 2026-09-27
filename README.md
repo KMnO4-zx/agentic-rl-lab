@@ -30,7 +30,11 @@
   <a href="https://github.com/KMnO4-zx/agentic-rl-lab/issues/13">点击查看群二维码</a>
 </p>
 
-📖 **在线阅读：** [中文实验手册](https://kmno4-zx.github.io/agentic-rl-lab/) · [English](https://kmno4-zx.github.io/agentic-rl-lab/en/)
+<p align="center">
+  📖 <strong>在线阅读：</strong>
+  <a href="https://kmno4-zx.github.io/agentic-rl-lab/">中文实验手册</a> ·
+  <a href="https://kmno4-zx.github.io/agentic-rl-lab/en/">English</a>
+</p>
 
 ## 项目介绍
 

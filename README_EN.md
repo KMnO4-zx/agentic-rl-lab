@@ -30,7 +30,11 @@
   <a href="https://github.com/KMnO4-zx/agentic-rl-lab/issues/13">Click to view the group QR code</a>
 </p>
 
-📖 **Read online:** [English handbook](https://kmno4-zx.github.io/agentic-rl-lab/en/) · [简体中文](https://kmno4-zx.github.io/agentic-rl-lab/)
+<p align="center">
+  📖 <strong>Read online:</strong>
+  <a href="https://kmno4-zx.github.io/agentic-rl-lab/en/">English handbook</a> ·
+  <a href="https://kmno4-zx.github.io/agentic-rl-lab/">简体中文</a>
+</p>
 
 ## Introduction
 
