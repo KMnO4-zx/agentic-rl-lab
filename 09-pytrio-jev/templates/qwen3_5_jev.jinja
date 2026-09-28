@@ -1,0 +1,23 @@
+{# qwen3_5_jev.jinja — 本项目钉死的 chat template。
+
+   只覆盖本项目的固定消息形态：system + user + assistant(JSON 骨架)，单轮、无 tools、纯文本。
+   assistant 段固定带空 think 块（与 Qwen3.5 内置模板在最后一轮 assistant 消息上的行为一致，
+   已验证逐字节相同）。多模态输入不在本模板范围内（图片由 ImageChunk 在 token 层插入）。
+
+   用法：
+     tokenizer.apply_chat_template(messages, chat_template=open("templates/qwen3_5_jev.jinja").read(), tokenize=False)
+#}
+{%- for message in messages %}
+    {%- if message.role == "system" %}
+        {{- '<|im_start|>system\n' + message.content + '<|im_end|>\n' }}
+    {%- elif message.role == "user" %}
+        {{- '<|im_start|>user\n' + message.content + '<|im_end|>\n' }}
+    {%- elif message.role == "assistant" %}
+        {{- '<|im_start|>assistant\n<think>\n\n</think>\n\n' + message.content + '<|im_end|>\n' }}
+    {%- else %}
+        {{- raise_exception('Unexpected message role: ' + message.role) }}
+    {%- endif %}
+{%- endfor %}
+{%- if add_generation_prompt %}
+    {{- '<|im_start|>assistant\n<think>\n\n</think>\n\n' }}
+{%- endif %}
