@@ -31,12 +31,13 @@ description: 从损失函数和 GRPO 开始，逐步探索蒸馏、工具交互�
 
 ## 04 · 探索更复杂的任务
 
-已经理解 GRPO 与工具交互后，可以分两条线继续：
+已经理解 GRPO 与工具交互后，可以从下面几个方向继续：
 
 | 研究方向 | 阅读顺序 | 重点问题 |
 | --- | --- | --- |
 | 多模态工具使用 | [Vision GRPO](/experiments/vision-grpo/) → [Spec-o3](/experiments/spec-o3/) | 图片与工具结果怎样共同进入训练轨迹？ |
 | 长程学习与信用分配 | [TEMPO](/experiments/tempo/) → [AgentOPSD](/experiments/agentopsd/) | 长轨迹中的哪一段、哪一轮应该得到学习信号？ |
+| 固定选项的分类决策 | [PyTrio-Jev](/experiments/pytrio-jev/) | 怎样用一次前向得到候选概率，再检查和校准置信度？ |
 
 TEMPO 章节是基于公开技术博客、在 ALFWorld 中进行的算法级复现。每个方法的环境、预算与实现边界都在正文中说明，阅读结果时也请一起查看。
 

@@ -28,6 +28,7 @@ PyTRIO 将模型训练与采样放到远程服务，本地脚本组织数据、�
 | 训练会调用工具的 Agent | [Search-R1](/experiments/search-r1/) · [ReTool](/experiments/retool/) | 搜索或代码执行结果怎样进入上下文，哪些 token 参与 loss |
 | 研究长程环境交互 | [ALFWorld](/experiments/alfworld/) · [TEMPO](/experiments/tempo/) · [AgentOPSD](/experiments/agentopsd/) | 环境状态、轨迹预算、终局奖励与信用分配 |
 | 加入图片和视觉工具 | [Vision GRPO](/experiments/vision-grpo/) · [Spec-o3](/experiments/spec-o3/) | 图文输入、视觉 token 对齐和固定评测条件 |
+| 训练固定选项的决策模型 | [PyTrio-Jev](/experiments/pytrio-jev/) · [快速启动](/experiments/pytrio-jev/run.html) | marker 位置监督、候选概率与温度校准 |
 
 GSPO 笔记会区分核心 loss 实现与完整训练复现；其他章节也保留各自的环境、预算和实现边界。阅读结果时，请一起看这些条件。
 

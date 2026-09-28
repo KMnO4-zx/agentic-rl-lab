@@ -67,6 +67,11 @@ export const metadata = {
     runDescription: '下载 Spec-o3 数据，运行 SFT、GRPO、开发集评测与绘图，核对 Qwen 模型、checkpoint 和结果口径。',
     en: { subtitle: 'Search the sky with reinforcement learning', seoTitle: 'Spec-o3 Multimodal Agents: SFT, GRPO and Astronomical Spectrum Review', description: 'Move from SFT to GRPO for astronomical candidate review, interleaving spectrum images, reasoning and tools with explicit evaluation settings.', runDescription: 'Download Spec-o3 data and run SFT, GRPO, development-set evaluation and plotting, with explicit Qwen models and checkpoint settings.', tags: ['Spectral analysis', 'Multimodal tools'] },
   },
+  'pytrio-jev': {
+    seoTitle: 'PyTrio-Jev 决策模型实战：LoRA 训练、分类推理与温度校准',
+    runDescription: '准备 Typed Decisions、ToolACE 与 Jevbench 数据，运行 Qwen3.5-4B LoRA 训练、决策推理、温度校准和五项基准评测。',
+    en: { subtitle: 'Train your own classification and decision model', seoTitle: 'PyTrio-Jev Decision Models: LoRA Training, Classification and Temperature Calibration', description: 'Fine-tune Qwen3.5-4B on 2,160 records with LoRA, then run restricted-softmax inference, temperature calibration and five benchmark evaluations.', runDescription: 'Prepare Typed Decisions, ToolACE and Jevbench data, then run Qwen3.5-4B LoRA training, decision inference, temperature calibration and five benchmark evaluations.', tags: ['Classification', 'Probability calibration'] },
+  },
 }
 
 export const englishGroups = {

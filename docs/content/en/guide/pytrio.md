@@ -28,6 +28,7 @@ The repository currently pins `pytrio==0.2.9` and requires Python 3.13 or later.
 | How do I train an agent to use tools? | [Search-R1](/en/experiments/search-r1/) · [ReTool](/en/experiments/retool/) | How search or code results enter context, and which tokens contribute to loss |
 | How do agents learn across long interactions? | [ALFWorld](/en/experiments/alfworld/) · [TEMPO](/en/experiments/tempo/) · [AgentOPSD](/en/experiments/agentopsd/) | Environment state, trajectory budgets, terminal rewards and credit assignment |
 | How do images and visual tools enter training? | [Vision GRPO](/en/experiments/vision-grpo/) · [Spec-o3](/en/experiments/spec-o3/) | Multimodal inputs, visual token alignment and fixed evaluation conditions |
+| How do I train a model for fixed-option decisions? | [PyTrio-Jev](/en/experiments/pytrio-jev/) · [Quick start](/en/experiments/pytrio-jev/run.html) | Marker-position supervision, candidate probabilities and temperature calibration |
 
 The GSPO note distinguishes its core-loss implementation from a complete training reproduction. Every chapter has its own environment, budget and implementation limits; read them alongside the results.
 

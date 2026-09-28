@@ -31,12 +31,13 @@ Introduce search, a Python sandbox and a TextWorld environment in turn. Watch ho
 
 ## 04 · Explore more complex tasks
 
-After GRPO and tool interaction, choose one of two directions:
+After GRPO and tool interaction, continue with one of these directions:
 
 | Direction | Reading order | Key question |
 | --- | --- | --- |
 | Multimodal tool use | [Vision GRPO](/en/experiments/vision-grpo/) → [Spec-o3](/en/experiments/spec-o3/) | How do images and tool outputs enter a training trajectory together? |
 | Long-horizon learning and credit assignment | [TEMPO](/en/experiments/tempo/) → [AgentOPSD](/en/experiments/agentopsd/) | Which segment or turn of a long trajectory should receive a learning signal? |
+| Fixed-option classification and decisions | [PyTrio-Jev](/en/experiments/pytrio-jev/) | How can one forward pass produce candidate probabilities, and how do we check and calibrate confidence? |
 
 The TEMPO chapter is an algorithm-level reproduction in ALFWorld based on a public technical blog. Each method’s environment, budget and implementation boundaries are documented in its note; read those alongside the results.
 

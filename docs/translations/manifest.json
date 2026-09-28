@@ -148,5 +148,17 @@
     "sourceSha256": "1d5b9b4d2f40ad310f2f767d7057a4b3c0a5b781f678e1492aa060acde6503d0",
     "translatedAt": "2026-09-26",
     "engine": "Manual English translation; original code and equations preserved"
+  },
+  "docs/translations/en/pytrio-jev.md": {
+    "source": "09-pytrio-jev/readme.md",
+    "sourceSha256": "14324ae943ea350fd88c6e4e3950b62cb9302b130e836c00d4952b7cb015293d",
+    "translatedAt": "2026-09-28",
+    "engine": "Manual English translation; original code and equations preserved"
+  },
+  "docs/translations/en/pytrio-jev.run.md": {
+    "source": "09-pytrio-jev/start.md",
+    "sourceSha256": "a9f57a214cfd9c7bcf4a925ef5ea12ac7aae2ab105bcda05d953b1d4dca18f6e",
+    "translatedAt": "2026-09-28",
+    "engine": "Manual English translation; original code and equations preserved"
   }
 }

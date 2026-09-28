@@ -22,6 +22,7 @@ export const chapters = [
   { id: 'tempo', number: '09.2', title: 'TEMPO', subtitle: '用小段轨迹学习长程任务', group: 'frontiers', source: '09-tempo/readme.md', description: '在 ALFWorld 中探索 macro-step 优化与生成式 critic，记录算法级复现的边界。', tags: ['Macro-step', '生成式 Critic'] },
   { id: 'agentopsd', number: '09.3', title: 'AgentOPSD', subtitle: '把信用分配到每一轮交互', group: 'frontiers', source: '09-AgentOPSD/readme.md', start: '09-AgentOPSD/start.md', description: '让带 Skill 的 Self-Teacher 给出 turn-level 信号，分析多轮 Agent 的学习过程。', tags: ['信用分配', 'Self-Teacher'] },
   { id: 'spec-o3', number: '09.4', title: 'Spec-o3', subtitle: '用强化学习寻找天上的星星', group: 'frontiers', source: '09-spec-o3/readme.md', start: '09-spec-o3/start.md', description: '从 SFT 到 GRPO，让模型边看光谱、边思考、边调用工具完成天体候选审核。', tags: ['光谱分析', '多模态工具'] },
+  { id: 'pytrio-jev', number: '09.5', title: 'PyTrio-Jev', subtitle: '训练自己的分类决策模型', group: 'frontiers', source: '09-pytrio-jev/readme.md', start: '09-pytrio-jev/start.md', description: '用 2160 条数据微调 Qwen3.5-4B，走通决策模型的 LoRA 训练、受限 softmax 推理、温度校准与五项基准评测。', tags: ['分类决策', '概率校准'] },
 ]
 
 export const repoUrl = 'https://github.com/KMnO4-zx/agentic-rl-lab'
@@ -44,4 +45,5 @@ export const articleCovers = {
   tempo: './images/封面.png',
   agentopsd: './images/封面.png',
   'spec-o3': './images/封面.png',
+  'pytrio-jev': './images/head.png',
 }
