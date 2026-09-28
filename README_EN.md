@@ -11,7 +11,7 @@
 </p>
 
 <p>
-  Reproduce and dissect frontier LLM reinforcement learning algorithms — GRPO, OPD, OPSD, GSPO, DAPO, Search-R1, ReTool, ALFWorld, Vision GRPO, TEMPO, AgentOPSD, Spec-o3, Slime and more — with simpler code and a lower GPU barrier.
+  Reproduce and dissect frontier LLM reinforcement learning algorithms — GRPO, OPD, OPSD, GSPO, DAPO, Search-R1, ReTool, ALFWorld, Vision GRPO, TEMPO, AgentOPSD, Spec-o3, PyTrio-Jev, Slime and more — with simpler code and a lower GPU barrier.
 </p>
 
 <p>
@@ -69,6 +69,7 @@ If you have a promising Agentic-RL idea and want to turn it into a paper or a pr
 | [TEMPO](./09-tempo/readme.md) | Algorithm-level reproduction of macro-step optimization with a generative critic | [Read](https://kmno4-zx.github.io/agentic-rl-lab/en/experiments/tempo/) |
 | [AgentOPSD](./09-AgentOPSD/readme.md) | Use a skill-guided Self-Teacher for turn-level credit assignment | [Read](https://kmno4-zx.github.io/agentic-rl-lab/en/experiments/agentopsd/) |
 | [Spec-o3](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/09-spec-o3/readme.md) | Find stars with reinforcement learning: use SFT + GRPO to interleave spectral inspection, reasoning, and tool use | [Read](https://kmno4-zx.github.io/agentic-rl-lab/en/experiments/spec-o3/) |
+| [PyTrio-Jev](./09-pytrio-jev/readme.md) | Anyone can train their own Jev decision model | — |
 
 ## Quick Start
 

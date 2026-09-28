@@ -11,7 +11,7 @@
 </p>
 
 <p>
-  复现和拆解前沿 LLM 强化学习算法，用更简单的代码和更低的 GPU 门槛，把 GRPO、OPD、OPSD、GSPO、DAPO、Search-R1、ReTool、ALFWorld、Vision GRPO、TEMPO、AgentOPSD、Spec-o3、Slime 等方法跑起来，方便复现。
+  复现和拆解前沿 LLM 强化学习算法，用更简单的代码和更低的 GPU 门槛，把 GRPO、OPD、OPSD、GSPO、DAPO、Search-R1、ReTool、ALFWorld、Vision GRPO、TEMPO、AgentOPSD、Spec-o3、PyTrio-Jev、Slime 等方法跑起来，方便复现。
 </p>
 
 <p>
@@ -69,6 +69,7 @@
 | [TEMPO](./09-tempo/readme.md) | 算法级复现 macro-step 优化与生成式 critic | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/tempo/) |
 | [AgentOPSD](./09-AgentOPSD/readme.md) | 用带 Skill 的 Self-Teacher 分配 turn-level credit | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/agentopsd/) |
 | [Spec-o3](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/09-spec-o3/readme.md) | 用强化学习找星星：通过 SFT + GRPO，让模型边看光谱、边思考、边调用工具 | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/spec-o3/) |
+| [PyTrio-Jev](./09-pytrio-jev/readme.md) | 人人皆可训练自己的 Jev 决策模型 | — |
 
 ## 快速启动
 
