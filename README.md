@@ -69,7 +69,7 @@
 | [TEMPO](./09-tempo/readme.md) | 算法级复现 macro-step 优化与生成式 critic | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/tempo/) |
 | [AgentOPSD](./09-AgentOPSD/readme.md) | 用带 Skill 的 Self-Teacher 分配 turn-level credit | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/agentopsd/) |
 | [Spec-o3](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/09-spec-o3/readme.md) | 用强化学习找星星：通过 SFT + GRPO，让模型边看光谱、边思考、边调用工具 | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/spec-o3/) |
-| [PyTrio-Jev](./09-pytrio-jev/readme.md) | 一顿麦当劳早餐，人人皆可训练自己的 Jev 决策模型 | — |
+| [PyTrio-Jev](./09-pytrio-jev/readme.md) | 一顿麦当劳早餐，人人皆可训练自己的 Jev 决策模型 | [阅读](https://kmno4-zx.github.io/agentic-rl-lab/experiments/pytrio-jev/) |
 
 ## 快速启动
 
