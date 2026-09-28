@@ -1,6 +1,6 @@
 """五项基准评测：Jevbench Easy/Original/Hard + Typed Decision + ToolACE。
 
-先选优、先校准，最后才读 test（见 dev.md 防污染红线）。
+先选优、先校准，最后才读 test（防污染红线：评测集一律不进训练）。
 
 用法：
 uv run python eval.py                          # base 模型
