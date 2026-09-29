@@ -1,0 +1,62 @@
+name: 💡 算法复现提案
+description: 提议为仓库新增一篇 Agentic RL 算法复现章节（贡献入口）
+title: "[提案]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        欢迎贡献！提交前请先阅读 [贡献指南](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/CONTRIBUTING.md)（[English](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/CONTRIBUTING_EN.md)）。提案通过后，维护者会统一分配章节编号，然后你就可以 Fork 开发并提 PR 了。
+
+  - type: input
+    id: paper
+    attributes:
+      label: 论文 / 算法
+      description: 想复现哪篇论文或哪个算法？请附论文链接
+      placeholder: 例如 Search-R1, https://arxiv.org/abs/2503.09516
+    validations:
+      required: true
+
+  - type: input
+    id: setup
+    attributes:
+      label: 数据集与基座模型
+      description: 打算在什么数据集、什么基座模型上复现？
+      placeholder: 例如 GSM8K + Qwen3.5-4B
+    validations:
+      required: true
+
+  - type: textarea
+    id: design
+    attributes:
+      label: 训练闭环设计
+      description: 简要说明 reward / advantage / loss 的设计思路，以及是否需要环境或工具交互
+    validations:
+      required: true
+
+  - type: input
+    id: cost
+    attributes:
+      label: 预估 PyTRIO 成本
+      description: 单次训练的预估花费和耗时（参考：现有章节大多在十几到上百元）
+      placeholder: 例如 约 20 元 / 2 小时
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: 补充说明
+      description: 其他想说明的内容，例如是否已有初步代码、与已有章节的关系等
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我已阅读贡献指南，了解章节结构与质量要求
+          required: true
+        - label: 我理解章节编号由维护者统一分配，不会自行编号
+          required: true

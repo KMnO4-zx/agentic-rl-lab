@@ -129,6 +129,8 @@ uv add --optional alfworld "alfworld==0.4.2" "spacy==3.8.13"
 
 ## Contributor
 
+Want to contribute to this repo? Welcome! Please read the [Contributing Guide](./CONTRIBUTING_EN.md) first: open an Issue proposal before starting a new algorithm chapter; fixes and docs improvements can go straight to a PR.
+
 <div align=center style="margin-top: 30px;">
   <a href="https://github.com/KMnO4-zx/agentic-rl-lab/graphs/contributors">
     <img src="https://contrib.rocks/image?repo=KMnO4-zx/agentic-rl-lab" />

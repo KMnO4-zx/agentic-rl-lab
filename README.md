@@ -129,6 +129,8 @@ uv add --optional alfworld "alfworld==0.4.2" "spacy==3.8.13"
 
 ## Contributor
 
+&emsp;&emsp;想为这个仓库贡献内容？欢迎！请先阅读 [贡献指南](./CONTRIBUTING.md)：新增算法章节请先开 Issue 提案，修复和文档改进可以直接提 PR。
+
 <div align=center style="margin-top: 30px;">
   <a href="https://github.com/KMnO4-zx/agentic-rl-lab/graphs/contributors">
     <img src="https://contrib.rocks/image?repo=KMnO4-zx/agentic-rl-lab" />
