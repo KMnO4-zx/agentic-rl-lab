@@ -22,6 +22,7 @@ function navigation(locale: 'zh' | 'en') {
         { text: en ? 'Learning path' : '学习路线', link: `${prefix}/guide/learning-path.html` },
         { text: en ? 'Environment setup' : '环境准备', link: `${prefix}/guide/quickstart.html` },
         { text: en ? 'GRPO, DAPO & GSPO' : 'GRPO、DAPO 与 GSPO', link: `${prefix}/guide/grpo-dapo-gspo.html` },
+        { text: en ? 'Contribute' : '参与贡献', link: `${prefix}/guide/contributing.html` },
         { text: en ? 'All experiments' : '全部实验', link: `${prefix}/experiments/` },
       ] },
       { text: en ? 'Training platforms' : '训练平台', items: [
