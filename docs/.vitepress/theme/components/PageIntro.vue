@@ -4,6 +4,7 @@ import { useData, withBase } from 'vitepress'
 import { chapterLink, repoUrl } from '../../../chapters.mjs'
 import { useLocale } from '../composables.js'
 import LabIcon from './LabIcon.vue'
+import MarkdownActions from './MarkdownActions.vue'
 const { frontmatter } = useData()
 const { t, locale, chapters } = useLocale()
 const chapter = computed(() => chapters.value.find(c => c.id === frontmatter.value.chapter))
@@ -11,6 +12,7 @@ const chapter = computed(() => chapters.value.find(c => c.id === frontmatter.val
 
 <template>
   <header v-if="chapter" class="article-intro">
+    <MarkdownActions />
     <p class="eyebrow">LAB {{ chapter.number }} <span>/</span> {{ frontmatter.group }}</p>
     <h1 id="article-title">{{ chapter.title }}<span>{{ frontmatter.isRun ? t('快速启动', 'Quick start') : chapter.subtitle }}</span></h1>
     <p class="article-description">{{ frontmatter.description }}</p>
@@ -21,5 +23,5 @@ const chapter = computed(() => chapters.value.find(c => c.id === frontmatter.val
       <a :href="`${repoUrl}/tree/main/${chapter.source.slice(0, chapter.source.lastIndexOf('/'))}`" target="_blank" rel="noreferrer"><LabIcon name="code" :size="16" /> {{ t('查看代码', 'View code') }} <span>↗</span></a>
     </div>
   </header>
-  <p v-else-if="frontmatter.modified" class="guide-meta"><a href="https://github.com/KMnO4-zx" rel="author">{{ frontmatter.author }}</a> · {{ t('更新于', 'Updated') }} <time :datetime="frontmatter.modified">{{ frontmatter.modified }}</time></p>
+  <div v-else-if="frontmatter.modified" class="guide-intro"><MarkdownActions /><p class="guide-meta"><a href="https://github.com/KMnO4-zx" rel="author">{{ frontmatter.author }}</a> · {{ t('更新于', 'Updated') }} <time :datetime="frontmatter.modified">{{ frontmatter.modified }}</time></p></div>
 </template>

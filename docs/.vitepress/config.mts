@@ -1,12 +1,32 @@
 import { defineConfig } from 'vitepress'
 import { slug } from 'github-slugger'
+import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { dirname, join, relative } from 'node:path'
 import { localizedChapters, localizedGroups, repoUrl, chapterLink } from '../chapters.mjs'
 import { siteUrl, siteBase } from '../site.mjs'
 import { addSeo, pageDates } from './seo.mjs'
 import { imageSize, imageHints } from './images.mjs'
 
-function navigation(locale: 'zh' | 'en') {
-  const en = locale === 'en'
+// Serve every page's raw markdown next to its HTML so readers can copy it
+// or hand the URL to an LLM (mirrors the page path, e.g. /experiments/grpo/index.md).
+// A UTF-8 BOM keeps browsers from misdetecting the encoding when the
+// static host serves .md without a charset header.
+function copyRawMarkdown(srcDir: string, outDir: string) {
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir)) {
+      const full = join(dir, entry)
+      if (statSync(full).isDirectory()) { if (entry !== 'public') walk(full); continue }
+      if (entry.endsWith('.md')) {
+        const dest = join(outDir, relative(srcDir, full))
+        mkdirSync(dirname(dest), { recursive: true })
+        writeFileSync(dest, '﻿' + readFileSync(full, 'utf8'))
+      }
+    }
+  }
+  walk(srcDir)
+}
+
+function navigation(locale: 'zh' | 'en') {  const en = locale === 'en'
   const prefix = en ? '/en' : ''
   const chapters = localizedChapters(locale)
   return {
@@ -74,6 +94,20 @@ export default defineConfig({
     ['meta', { name: 'google-site-verification', content: 'plkZ1LHW27AE_IOw7VfWvPkWazMXaKAhksRUJMs92DE' }],
   ],
   transformPageData: addSeo,
+  buildEnd: (siteConfig) => copyRawMarkdown(siteConfig.srcDir, siteConfig.outDir),
+  vite: {
+    plugins: [{
+      name: 'raw-markdown-charset',
+      // The dev server bypasses buildEnd; give source .md responses an
+      // explicit charset so Chinese text does not render as mojibake.
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          if (req.url?.includes('.md')) res.setHeader('Content-Type', 'text/markdown; charset=utf-8')
+          next()
+        })
+      },
+    }],
+  },
   // VitePress's generated 404 bypasses transformPageData.
   transformHead: ({ pageData }) => pageData.relativePath === '404.md'
     ? [['meta', { name: 'robots', content: 'noindex' }]] : [],
