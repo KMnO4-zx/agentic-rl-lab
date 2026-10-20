@@ -24,6 +24,7 @@ from tqdm import tqdm
 from data import SearchExample, load_examples
 from rollout import RolloutConfig, Trajectory, rollout_batch
 from search import (
+    DEEPSEEK_SEARCH_ENDPOINT,
     SEARCH_BACKENDS,
     SearchClient,
     create_search_client,
@@ -107,9 +108,12 @@ def summary_record(
         "search_backend": args.search_backend,
         "search_concurrency": args.search_concurrency,
         "search_timeout": args.search_timeout,
-        "search_model": (
-            args.search_model if args.search_backend == "deepseek" else None
+        "search_api": (
+            DEEPSEEK_SEARCH_ENDPOINT if args.search_backend == "deepseek" else None
         ),
+        "search_count": args.search_count if args.search_backend == "deepseek" else None,
+        "search_need_content": False if args.search_backend == "deepseek" else None,
+        "search_text_field": "snippet" if args.search_backend == "deepseek" else None,
         "evaluated_examples": len(trajectories),
         "metrics": metrics,
     }
@@ -155,24 +159,27 @@ def parse_args() -> argparse.Namespace:
         "--search-backend",
         choices=SEARCH_BACKENDS,
         default="deepseek",
-        help="搜索后端：deepseek 付费高并发，wikipedia 免费免密钥，zhihu 免费但有额度限制",
+        help="搜索后端：deepseek 官方 Search API，wikipedia 免费免密钥",
     )
     parser.add_argument(
         "--search-concurrency",
         type=int,
         default=None,
-        help="不同轨迹之间的搜索并发；默认 deepseek=16、wikipedia=3、zhihu=1",
+        help="不同轨迹之间的搜索并发；默认 deepseek=16、wikipedia=3",
     )
     parser.add_argument(
-        "--search-model",
-        default="deepseek-v4-flash",
-        help="DeepSeek Search 使用的模型；wikipedia 和 zhihu 后端会忽略此参数",
+        "--search-count",
+        type=int,
+        choices=range(1, 51),
+        default=3,
+        metavar="1-50",
+        help="DeepSeek Search 返回的网页条数；wikipedia 后端固定返回 Top 3",
     )
     parser.add_argument(
         "--search-timeout",
         type=float,
         default=None,
-        help="单次搜索的超时秒数；默认 deepseek=60、zhihu=15",
+        help="单次搜索的超时秒数；默认 deepseek=60、wikipedia=15",
     )
     parser.add_argument(
         "--max-assistant-turns",
@@ -227,6 +234,12 @@ def main(args: argparse.Namespace) -> None:
     args.search_timeout = resolve_search_timeout(
         args.search_backend, args.search_timeout
     )
+    search_client = create_search_client(
+        args.search_backend,
+        Path(__file__).resolve().parent / ".env",
+        count=args.search_count,
+        timeout=args.search_timeout,
+    )
 
     # 先校验磁盘上的固定评测集仍是完整 70 题，再按 limit 截取少量题做试跑。
     examples = load_examples(EVAL_DATA_PATH)
@@ -249,12 +262,6 @@ def main(args: argparse.Namespace) -> None:
 
     # 评测沿用训练时相同的 tokenizer、搜索客户端和多轮轨迹限制。
     tokenizer = sampling_client.get_tokenizer()
-    search_client = create_search_client(
-        args.search_backend,
-        Path(__file__).resolve().parent / ".env",
-        model=args.search_model,
-        timeout=args.search_timeout,
-    )
     config = RolloutConfig(
         # 每道题只生成一条确定的评测轨迹，不需要训练阶段的 GRPO group。
         group_size=1,

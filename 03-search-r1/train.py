@@ -13,10 +13,10 @@ uv run python train.py \
 
 在 03-search-r1 目录下使用 DeepSeek Search 进行小规模训练：
 uv run python train.py \
-    --max-steps 20 \
+    --max-steps 30 \
     --questions-per-batch 8 \
     --group-size 8 \
-    --save-every 5 \
+    --save-every 10 \
     --base-model Qwen/Qwen3.5-4B \
     --search-backend deepseek \
     --run-name search-r1-qwen35-4b-deepseek \
@@ -33,16 +33,6 @@ uv run python train.py \
     --run-name search-r1-qwen35-4b-wikipedia \
     --swanlab-mode online
 
-使用知乎搜索进行小规模训练：
-uv run python train.py \
-    --max-steps 20 \
-    --questions-per-batch 8 \
-    --group-size 8 \
-    --save-every 5 \
-    --base-model Qwen/Qwen3.5-4B \
-    --search-backend zhihu \
-    --run-name search-r1-qwen35-4b-zhihu \
-    --swanlab-mode online
 """
 
 import argparse
@@ -67,20 +57,9 @@ from search import (
 
 
 MAX_TRAIN_CONTEXT_TOKENS = 8192  # 单个训练 Datum 允许的最大 token 数。
-MAX_MICRO_BATCH_ITEMS = 32  # 单个 micro-batch 最多容纳的 Datum 数。
-MAX_MICRO_BATCH_PADDED_TOKENS = 64_000  # 单批 padding 矩形允许的最大 token 数。
 
 
-class TrainingDatum:
-    """把 PyTRIO Datum 和真实 token 数放在一起。"""
-
-    def __init__(self, datum: trio.Datum, num_tokens: int) -> None:
-        """保存一个待装箱的训练样本。"""
-        self.datum = datum
-        self.num_tokens = num_tokens
-
-
-def build_datum(trajectory: Trajectory) -> TrainingDatum:
+def build_datum(trajectory: Trajectory) -> trio.Datum:
     """把一条前缀扩展的多轮轨迹合成一个右移对齐的训练 Datum。"""
     if not trajectory.turns:
         raise ValueError("不能用没有 assistant turn 的轨迹构造训练 Datum")
@@ -140,7 +119,7 @@ def build_datum(trajectory: Trajectory) -> TrainingDatum:
         raise ValueError("Datum 的 input、target、logprobs 和 advantages 长度不一致")
     if len(input_tokens) > MAX_TRAIN_CONTEXT_TOKENS:
         raise ValueError(f"Datum 超过 {MAX_TRAIN_CONTEXT_TOKENS} token")
-    datum = trio.Datum(
+    return trio.Datum(
         model_input=trio.ModelInput.from_ints(input_tokens),
         loss_fn_inputs={
             "target_tokens": np.asarray(target_tokens, dtype=np.int64),
@@ -148,86 +127,6 @@ def build_datum(trajectory: Trajectory) -> TrainingDatum:
             "advantages": np.asarray(advantages, dtype=np.float32),
         },
     )
-    return TrainingDatum(datum, len(input_tokens))
-
-
-def build_training_datums(trajectories: list[Trajectory]) -> list[TrainingDatum]:
-    """为每条有训练信号的完整轨迹创建一个 Datum。"""
-    datums: list[TrainingDatum] = []
-    for trajectory in trajectories:
-        if trajectory.advantage == 0.0:
-            continue
-        if any(turn.completion_tokens for turn in trajectory.turns):
-            datums.append(build_datum(trajectory))
-    return datums
-
-
-def datum_size(item: TrainingDatum) -> int:
-    """返回装箱排序使用的 Datum token 数。"""
-    return item.num_tokens
-
-
-def datum_loss_token_count(item: TrainingDatum) -> int:
-    """统计一条 Datum 中 advantage 非零、实际参与 loss 的 token 数。"""
-    advantages = item.datum.loss_fn_inputs["advantages"].to_numpy()
-    return int(np.count_nonzero(advantages))
-
-
-def pack_micro_batches(datums: list[TrainingDatum]) -> list[list[TrainingDatum]]:
-    """按 padding 后的矩形面积使用 first-fit decreasing 动态装箱。"""
-    batches: list[list[TrainingDatum]] = []
-    batch_max_tokens: list[int] = []
-    for item in sorted(datums, key=datum_size, reverse=True):
-        if item.num_tokens > MAX_TRAIN_CONTEXT_TOKENS:
-            raise ValueError("单条 Datum 超过训练上下文限制")
-        for index, batch in enumerate(batches):
-            next_items = len(batch) + 1
-            next_max_tokens = max(batch_max_tokens[index], item.num_tokens)
-            next_padded_tokens = next_items * next_max_tokens
-            fits_items = next_items <= MAX_MICRO_BATCH_ITEMS
-            fits_tokens = next_padded_tokens <= MAX_MICRO_BATCH_PADDED_TOKENS
-            if fits_items and fits_tokens:
-                batch.append(item)
-                batch_max_tokens[index] = next_max_tokens
-                break
-        else:
-            batches.append([item])
-            batch_max_tokens.append(item.num_tokens)
-    return batches
-
-
-def weight_micro_batch_for_global_mean(
-    micro_batch: list[TrainingDatum],
-    total_samples: int,
-) -> list[trio.Datum]:
-    """按样本占比缩放 advantage，使梯度累计等价于全局样本均值。"""
-    if not micro_batch:
-        return []
-    if total_samples <= 0:
-        raise ValueError("全局样本数必须大于零")
-    if len(micro_batch) > total_samples:
-        raise ValueError("micro-batch 样本数不能超过全局样本数")
-
-    # 远端对每次 forward_backward 内的样本取 mean。多个大小不同的
-    # micro-batch 直接累积会让小批次权重过大，因此将第 k 批乘以 n_k / N：
-    # sum_k [n_k / N * mean(loss_k)] = mean(loss_global)。
-    micro_batch_weight = np.float32(len(micro_batch) / total_samples)
-    weighted_datums: list[trio.Datum] = []
-    for item in micro_batch:
-        loss_inputs = item.datum.loss_fn_inputs
-        weighted_datums.append(
-            trio.Datum(
-                model_input=item.datum.model_input,
-                loss_fn_inputs={
-                    "target_tokens": loss_inputs["target_tokens"].to_numpy(),
-                    "logprobs": loss_inputs["logprobs"].to_numpy(),
-                    "advantages": (
-                        loss_inputs["advantages"].to_numpy() * micro_batch_weight
-                    ),
-                },
-            )
-        )
-    return weighted_datums
 
 
 def mean(values: list[float]) -> float:
@@ -255,11 +154,10 @@ def degenerate_group_count(trajectories: list[Trajectory]) -> int:
 
 def rollout_metrics(
     trajectories: list[Trajectory],
-    datums: list[TrainingDatum],
-    micro_batches: list[list[TrainingDatum]],
+    datums: list[trio.Datum],
     question_count: int,
 ) -> dict[str, float]:
-    """汇总 reward、轨迹和动态 micro-batch 指标。"""
+    """汇总 reward、轨迹和完整训练 batch 的 token 指标。"""
     tool_attempts = sum(
         "<tool_call>" in turn.text
         for trajectory in trajectories
@@ -272,13 +170,11 @@ def rollout_metrics(
         for trajectory in trajectories
         if trajectory.turns
     ]
-    micro_batch_padded_tokens = [
-        max((item.num_tokens for item in batch), default=0) * len(batch)
-        for batch in micro_batches
-    ]
-    input_tokens = sum(item.num_tokens for item in datums)
-    loss_tokens = sum(datum_loss_token_count(item) for item in datums)
-    padded_tokens = sum(micro_batch_padded_tokens)
+    input_tokens = sum(len(datum.model_input) for datum in datums)
+    loss_tokens = sum(
+        np.count_nonzero(datum.loss_fn_inputs["advantages"].to_numpy())
+        for datum in datums
+    )
     return {
         "reward/mean": mean([trajectory.reward for trajectory in trajectories]),
         "reward/correct": mean([float(trajectory.exact_match) for trajectory in trajectories]),
@@ -294,43 +190,9 @@ def rollout_metrics(
         "rollout/degenerate_group_rate": degenerate_group_count(trajectories)
         / max(question_count, 1),
         "train/datums_per_rollout_batch": float(len(datums)),
-        "train/micro_batches_per_step": float(len(micro_batches)),
         "train/tokens_per_rollout_batch": float(input_tokens),
         "train/loss_tokens_per_rollout_batch": float(loss_tokens),
-        "train/padded_tokens_per_rollout_batch": float(padded_tokens),
-        "train/max_micro_batch_padded_tokens": float(
-            max(micro_batch_padded_tokens, default=0)
-        ),
     }
-
-
-def merge_trainer_metrics(results: list[Any]) -> dict[str, float]:
-    """合并多个 micro-batch 指标；预加权 mean loss 需要求和。"""
-    values: dict[str, list[float]] = defaultdict(list)
-    for result in results:
-        for key, value in dict(result.metrics).items():
-            if isinstance(value, (int, float, np.number)):
-                values[key].append(float(value))
-    merged: dict[str, float] = {}
-    for key, items in values.items():
-        # 提交前的 advantage 已乘以 n_k / N，因此各 micro-batch 返回的
-        # mean loss 相加才是整个 logical batch 的 global mean loss。
-        if key in {"loss_mean", "loss/mean"}:
-            merged[f"trainer/{key}"] = sum(items)
-        else:
-            merged[f"trainer/{key}"] = mean(items)
-    return merged
-
-
-def pick_mean_loss_metric(metrics: dict[str, float]) -> float | None:
-    """从 PyTRIO 指标中提取 mean loss，不混用总 loss。"""
-    for key in (
-        "trainer/loss_mean",
-        "trainer/loss/mean",
-    ):
-        if key in metrics:
-            return float(metrics[key])
-    return None
 
 
 def serializable_config(args: argparse.Namespace) -> dict[str, Any]:
@@ -408,24 +270,27 @@ def parse_args() -> argparse.Namespace:
         "--search-backend",
         choices=SEARCH_BACKENDS,
         default="deepseek",
-        help="搜索后端：deepseek 付费高并发，wikipedia 免费免密钥，zhihu 免费但有额度限制",
+        help="搜索后端：deepseek 官方 Search API，wikipedia 免费免密钥",
     )
     parser.add_argument(
         "--search-concurrency",
         type=int,
         default=None,
-        help="不同轨迹之间的搜索并发；默认 deepseek=16、wikipedia=3、zhihu=1",
+        help="不同轨迹之间的搜索并发；默认 deepseek=16、wikipedia=3",
     )
     parser.add_argument(
-        "--search-model",
-        default="deepseek-v4-flash",
-        help="DeepSeek Search 使用的模型；wikipedia 和 zhihu 后端会忽略此参数",
+        "--search-count",
+        type=int,
+        choices=range(1, 51),
+        default=3,
+        metavar="1-50",
+        help="DeepSeek Search 返回的网页条数；wikipedia 后端固定返回 Top 3",
     )
     parser.add_argument(
         "--search-timeout",
         type=float,
         default=None,
-        help="单次搜索的超时秒数；默认 deepseek=60、zhihu=15",
+        help="单次搜索的超时秒数；默认 deepseek=60、wikipedia=15",
     )
     parser.add_argument(
         "--max-assistant-turns",
@@ -523,6 +388,12 @@ def main(args: argparse.Namespace) -> None:
     args.search_timeout = resolve_search_timeout(
         args.search_backend, args.search_timeout
     )
+    search_client = create_search_client(
+        args.search_backend,
+        Path(__file__).resolve().parent / ".env",
+        count=args.search_count,
+        timeout=args.search_timeout,
+    )
 
     # 先固定打乱训练问题；max_train_samples 只用于限制本次实际参与训练的数据量。
     examples = shuffled_examples(args.data, args.seed)
@@ -546,12 +417,6 @@ def main(args: argparse.Namespace) -> None:
 
     # tokenizer 来自训练客户端，保证 rollout、训练 Datum 使用完全相同的分词方式。
     tokenizer = training_client.get_tokenizer()
-    search_client = create_search_client(
-        args.search_backend,
-        Path(__file__).resolve().parent / ".env",
-        model=args.search_model,
-        timeout=args.search_timeout,
-    )
 
     # 将命令行中的采样、搜索次数和轨迹长度限制集中成 rollout 配置。
     rollout_config = RolloutConfig(
@@ -567,7 +432,7 @@ def main(args: argparse.Namespace) -> None:
         seed=args.seed,
     )
 
-    # 每个训练 step 的所有 micro-batch 共享同一组 Adam 参数，并只 optim_step 一次。
+    # 每个训练 step 处理完整 rollout batch，并只 optim_step 一次。
     adam_params = trio.AdamParams(
         learning_rate=args.learning_rate,
         beta1=args.beta1,
@@ -623,40 +488,27 @@ def main(args: argparse.Namespace) -> None:
                         progress_callback=rollout_progress.update,
                     )
 
-                # 每条有训练信号的完整轨迹只构造一个 Datum，再按 padding 矩形动态装箱。
+                # 完整 rollout batch 一次提交，SDK 自动拆批、归一化并累积梯度。
                 training_progress.set_postfix(phase="build datums", refresh=True)
-                datums = build_training_datums(trajectories)
-                micro_batches = pack_micro_batches(datums)
-
-                # 远端对每次请求按样本取 mean；按当前批次占全部 rollout 样本的比例
-                # 缩放 advantage 后再累积，保证动态拆批不改变 global mean 梯度。
-                training_progress.set_postfix(phase="backward", refresh=True)
-                trainer_results = []
-                for micro_batch in micro_batches:
+                datums = [build_datum(trajectory) for trajectory in trajectories]
+                metrics = rollout_metrics(trajectories, datums, len(batch))
+                update_skipped = not any(
+                    trajectory.advantage != 0.0 for trajectory in trajectories
+                )
+                if not update_skipped:
+                    training_progress.set_postfix(phase="backward", refresh=True)
                     result = training_client.forward_backward(
-                        weight_micro_batch_for_global_mean(
-                            micro_batch,
-                            total_samples=len(trajectories),
-                        ),
+                        datums,
                         loss_fn="importance_sampling",
                     ).result()
-                    trainer_results.append(result)
-
-                # 整个 rollout batch 只更新一次参数；没有非零 advantage 时跳过更新。
-                if micro_batches:
                     training_progress.set_postfix(phase="optimizer", refresh=True)
                     training_client.optim_step(adam_params).result()
+                    metrics.update(
+                        {f"trainer/{key}": value for key, value in result.metrics.items()}
+                    )
 
                 # 汇总 rollout、搜索客户端和远程 trainer 指标。
-                metrics = rollout_metrics(
-                    trajectories,
-                    datums,
-                    micro_batches,
-                    len(batch),
-                )
                 metrics.update(search_client.stats.metrics())
-                metrics.update(merge_trainer_metrics(trainer_results))
-                mean_loss = pick_mean_loss_metric(metrics)
 
                 # 按配置同时保存可续训 state 和可推理 sampler weights。
                 # checkpoint 保存耗时也算在当前 step 的完整耗时内。
@@ -670,15 +522,12 @@ def main(args: argparse.Namespace) -> None:
                 # 记录完整 step 耗时，终端和 SwanLab 都能看到同一数值。
                 step_seconds = perf_counter() - step_started
                 metrics["time/step_seconds"] = step_seconds
-                metrics["train/update_skipped"] = float(not micro_batches)
+                metrics["train/update_skipped"] = float(update_skipped)
                 swanlab.log(metrics, step=step)
 
-                if not micro_batches:
-                    loss_mean_text = "skipped"
-                elif mean_loss is None:
-                    loss_mean_text = "missing"
-                else:
-                    loss_mean_text = f"{mean_loss:.4f}"
+                loss_mean_text = (
+                    "skipped" if update_skipped else f"{metrics['trainer/loss_mean']:.4f}"
+                )
                 training_progress.update(1)
                 training_progress.set_postfix(
                     step_s=f"{step_seconds:.1f}",
@@ -694,8 +543,7 @@ def main(args: argparse.Namespace) -> None:
                     f"correct_rate={metrics['reward/correct']:.3f} "
                     f"mean_search_calls={metrics['rollout/search_calls']:.2f} "
                     f"input_tokens={int(metrics['train/tokens_per_rollout_batch'])} "
-                    f"loss_tokens={int(metrics['train/loss_tokens_per_rollout_batch'])} "
-                    f"padded_tokens={int(metrics['train/padded_tokens_per_rollout_batch'])}"
+                    f"loss_tokens={int(metrics['train/loss_tokens_per_rollout_batch'])}"
                 )
 
         # 无论周期保存频率如何，正常完成训练后始终保存一次最终 checkpoint。

@@ -18,7 +18,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "datasets" },
-    { name = "deepseek-search" },
+    { name = "httpx" },
     { name = "math-verify" },
     { name = "matplotlib" },
     { name = "modelscope" },
@@ -44,7 +44,7 @@ alfworld = [
 requires-dist = [
     { name = "alfworld", marker = "extra == 'alfworld'", specifier = "==0.4.2" },
     { name = "datasets", specifier = ">=5.0.0" },
-    { name = "deepseek-search", git = "https://github.com/KMnO4-zx/deepseek-search.git?rev=6215c8dbb7347f94e9dcea6e741df5918449d6c4" },
+    { name = "httpx", specifier = ">=0.28.1" },
     { name = "math-verify", specifier = ">=0.9.0" },
     { name = "matplotlib", specifier = ">=3.11.0" },
     { name = "modelscope", specifier = ">=1.38.1" },
@@ -479,14 +479,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/d9/85/ce4f780c32f7e36d71257f1c27e8ba898ebe379cb54f211f5f2013f2c219/datasets-5.0.0.tar.gz", hash = "sha256:83dbbbdb07a33b82192b8c419deb18739b138ee2ce1a322d55ce6b100954ec1a", size = 631708, upload-time = "2026-06-05T13:18:26.124Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/05/66/73034ad30b59f13439b75e620989dacba4c047256e358ba7c2e9ec98ea22/datasets-5.0.0-py3-none-any.whl", hash = "sha256:7dd34927a0fd7046e98aad5cb9430e699c373238a15befa7b9bf22b991a7fee6", size = 555084, upload-time = "2026-06-05T13:18:24.435Z" },
-]
-
-[[package]]
-name = "deepseek-search"
-version = "0.3.1"
-source = { git = "https://github.com/KMnO4-zx/deepseek-search.git?rev=6215c8dbb7347f94e9dcea6e741df5918449d6c4#6215c8dbb7347f94e9dcea6e741df5918449d6c4" }
-dependencies = [
-    { name = "httpx" },
 ]
 
 [[package]]
