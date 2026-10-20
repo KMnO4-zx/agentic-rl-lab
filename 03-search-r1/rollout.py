@@ -3,7 +3,7 @@
 import asyncio
 import copy
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Callable
 
 import pytrio as trio
@@ -134,7 +134,7 @@ def fit_tool_content(
     result: SearchResult,
     config: RolloutConfig,
 ) -> tuple[str, list[int]] | None:
-    """在工具和总轨迹预算内按完整结果条目截断。"""
+    """优先保留完整条目；首条过长时缩短正文，保留标题和来源。"""
     if not result.ok:
         candidates = [f"Search error: {result.error or 'unknown error'}"]
     elif not result.items:
@@ -142,12 +142,9 @@ def fit_tool_content(
     else:
         candidates = [format_item(item, index) for index, item in enumerate(result.items, 1)]
 
-    accepted: list[str] = []
-    accepted_prompt: list[int] | None = None
-    for candidate in candidates:
-        content = "\n\n".join([*accepted, candidate])
+    def fitting_prompt(content: str) -> list[int] | None:
         if token_count(tokenizer, content) > config.max_tool_response_tokens:
-            break
+            return None
         next_tool_message = tool_message(call_id, content)
         next_prompt = build_next_prompt(
             tokenizer,
@@ -158,12 +155,42 @@ def fit_tool_content(
             next_tool_message,
         )
         if len(next_prompt) > config.max_trajectory_tokens:
+            return None
+        return next_prompt
+
+    accepted: list[str] = []
+    accepted_prompt: list[int] | None = None
+    for candidate in candidates:
+        content = "\n\n".join([*accepted, candidate])
+        next_prompt = fitting_prompt(content)
+        if next_prompt is None:
             break
         accepted.append(candidate)
         accepted_prompt = next_prompt
-    if not accepted or accepted_prompt is None:
-        return None
-    return "\n\n".join(accepted), accepted_prompt
+    if accepted and accepted_prompt is not None:
+        return "\n\n".join(accepted), accepted_prompt
+
+    # 缺少 snippet 时回退的 summary 可能很长，不能因此丢掉整次搜索。
+    if result.ok and result.items:
+        item = result.items[0]
+        tokens = tokenizer.encode(item.content, add_special_tokens=False)
+        low, high = 1, len(tokens)
+        fitted: tuple[str, list[int]] | None = None
+        while low <= high:
+            middle = (low + high) // 2
+            shortened = replace(
+                item,
+                content=tokenizer.decode(tokens[:middle]) + "\n[truncated]",
+            )
+            content = format_item(shortened, 1)
+            next_prompt = fitting_prompt(content)
+            if next_prompt is None:
+                high = middle - 1
+            else:
+                fitted = content, next_prompt
+                low = middle + 1
+        return fitted
+    return None
 
 
 def make_request(

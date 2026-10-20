@@ -4,12 +4,15 @@ Run from the repository root:
 
     uv run python 03-search-r1/analyse.py
     uv run python 03-search-r1/analyse.py --preset deepseek
+    uv run python 03-search-r1/analyse.py --preset deepseek-api
 
 The Zhihu checkpoint figure is written to
 ``03-search-r1/eval_result/checkpoint_em_format.png`` by default. The DeepSeek
 Base-vs-Step-20 figure is written to
 ``03-search-r1/images/deepseek_checkpoint_em_format.png``. Each metric is read
 from the final ``type=summary`` record of the corresponding evaluation JSONL.
+The official Search API Base-vs-Step-30 figure is written to
+``03-search-r1/images/deepseek_api_base_vs_step30.png``.
 """
 
 from __future__ import annotations
@@ -27,6 +30,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_RESULT_DIR = SCRIPT_DIR / "eval_result"
 DEFAULT_OUTPUT = DEFAULT_RESULT_DIR / "checkpoint_em_format.png"
 DEFAULT_DEEPSEEK_OUTPUT = SCRIPT_DIR / "images" / "deepseek_checkpoint_em_format.png"
+DEFAULT_DEEPSEEK_API_OUTPUT = SCRIPT_DIR / "images" / "deepseek_api_base_vs_step30.png"
 
 ZHIHU_CHECKPOINTS = (
     ("Base", "eval_results.jsonl"),
@@ -40,13 +44,17 @@ DEEPSEEK_CHECKPOINTS = (
     ("Base", "eval_results_base_deepseek_search.jsonl"),
     ("Step 20", "eval_results_rl_step_20_deepseek_search.jsonl"),
 )
+DEEPSEEK_API_CHECKPOINTS = (
+    ("Base", "eval_results_base.jsonl"),
+    ("Step 30", "eval_results_rl_step_30.jsonl"),
+)
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--preset",
-        choices=("zhihu", "deepseek"),
+        choices=("zhihu", "deepseek", "deepseek-api"),
         default="zhihu",
         help="Evaluation set to plot; the default preserves the original Zhihu figure",
     )
@@ -121,12 +129,22 @@ def load_metrics(
                 )
             try:
                 evaluation_sizes.add(int(summary["evaluated_examples"]))
+                # 旧 Evidence 实验仍可绘图，但不能与官方 Search API 混为同一环境。
+                if summary.get("search_api"):
+                    search_details = {
+                        "api": summary["search_api"],
+                        "count": int(summary["search_count"]),
+                        "need_content": summary["search_need_content"],
+                        "text_field": summary["search_text_field"],
+                    }
+                else:
+                    search_details = {"legacy_evidence_model": summary["search_model"]}
                 search_configs.add(
                     (
                         str(backend),
                         int(summary["search_concurrency"]),
                         float(summary["search_timeout"]),
-                        str(summary["search_model"]),
+                        json.dumps(search_details, sort_keys=True),
                     )
                 )
             except (KeyError, TypeError, ValueError) as error:
@@ -315,8 +333,12 @@ def make_deepseek_figure(
     labels: list[str],
     macro_em: list[float],
     format_rate: list[float],
+    *,
+    y_limits: tuple[tuple[float, float], tuple[float, float]] = (
+        (0.42, 0.52), (0.86, 1.00),
+    ),
 ) -> plt.Figure:
-    """Compare Base and Step 20 under the same DeepSeek Search environment."""
+    """Compare Base and a checkpoint under the same DeepSeek Search environment."""
     configure_style()
 
     x_positions = list(range(len(labels)))
@@ -328,8 +350,8 @@ def make_deepseek_figure(
         gridspec_kw={"wspace": 0.08},
     )
     panels = (
-        (axes[0], macro_em, "(a) Macro Exact Match", (0.42, 0.52)),
-        (axes[1], format_rate, "(b) Valid Answer Format Rate", (0.86, 1.00)),
+        (axes[0], macro_em, "(a) Macro Exact Match", y_limits[0]),
+        (axes[1], format_rate, "(b) Valid Answer Format Rate", y_limits[1]),
     )
 
     for axis, values, title, y_limits in panels:
@@ -428,9 +450,9 @@ def make_deepseek_figure(
         0.5,
         0.015,
         (
-            f"Step 20 change: Macro EM {em_gain * 100:+.1f} pp · "
+            f"{labels[1]} change: Macro EM {em_gain * 100:+.1f} pp · "
             f"valid answer format {format_gain * 100:+.1f} pp · "
-            "20 training steps · "
+            f"{labels[1].removeprefix('Step ')} training steps · "
             "search success 100% in both evaluations."
         ),
         ha="center",
@@ -452,6 +474,17 @@ def main() -> None:
         )
         figure = make_deepseek_figure(labels, macro_em, format_rate)
         output = args.output or DEFAULT_DEEPSEEK_OUTPUT
+    elif args.preset == "deepseek-api":
+        labels, macro_em, format_rate = load_metrics(
+            args.result_dir,
+            DEEPSEEK_API_CHECKPOINTS,
+            expected_backend="deepseek",
+        )
+        figure = make_deepseek_figure(
+            labels, macro_em, format_rate,
+            y_limits=((0.38, 0.46), (0.80, 0.96)),
+        )
+        output = args.output or DEFAULT_DEEPSEEK_API_OUTPUT
     else:
         labels, macro_em, format_rate = load_metrics(
             args.result_dir,
