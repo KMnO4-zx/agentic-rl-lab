@@ -20,8 +20,8 @@ export const metadata = {
   },
   'search-r1': {
     seoTitle: 'Search-R1 原理与实现：训练会多轮搜索的 LLM Agent',
-    runDescription: '配置 Search-R1 的检索后端、环境变量与训练入口，运行带搜索工具的多轮强化学习实验。',
-    en: { subtitle: 'Learn to search while reasoning', seoTitle: 'Search-R1 Explained: Training LLM Agents for Multi-turn Search', description: 'Put online search inside the rollout loop and train a model to retrieve evidence across turns, with switchable search backends and evaluation notes.', runDescription: 'Configure a search backend and environment variables, then launch the Search-R1 training script for multi-turn tool-assisted reinforcement learning.', tags: ['Online search', 'Multi-turn interaction'] },
+    runDescription: '配置 DeepSeek 官方 Search API 密钥或免密钥 Wikipedia，运行 Search-R1 多轮搜索训练与 Base / checkpoint 评测。',
+    en: { subtitle: 'Learn to search while reasoning', seoTitle: 'Search-R1 Explained: Training LLM Agents for Multi-turn Search', description: 'Train multi-turn search with the official DeepSeek Search API or Wikipedia, and compare Base with the 30-step checkpoint using fixed evaluation questions.', runDescription: 'Configure an official DeepSeek Search API key or key-free Wikipedia, then run Search-R1 multi-turn training and Base / checkpoint evaluation.', tags: ['Online search', 'Multi-turn interaction'] },
   },
   opsd: {
     seoTitle: 'OPSD 自蒸馏实战：固定教师与学生自采样轨迹',

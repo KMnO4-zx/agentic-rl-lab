@@ -96,6 +96,7 @@ If you only want to pull a single demo script into your own project, the current
 ```bash
 uv add \
   "datasets>=5.0.0" \
+  "httpx>=0.28.1" \
   "math-verify>=0.9.0" \
   "matplotlib>=3.11.0" \
   "modelscope>=1.38.1" \
@@ -109,11 +110,7 @@ uv add \
   "tqdm>=4.68.3"
 ```
 
-The DeepSeek Search backend used by Search-R1 is pinned to a fixed source revision:
-
-```bash
-uv add "deepseek-search @ git+https://github.com/KMnO4-zx/deepseek-search.git@6215c8dbb7347f94e9dcea6e741df5918449d6c4"
-```
+Search-R1 calls the official DeepSeek Search API through `httpx`. See the [quickstart](./03-search-r1/start.md) for API key setup.
 
 The ALFWorld optional extra corresponds to:
 
@@ -128,6 +125,8 @@ uv add --optional alfworld "alfworld==0.4.2" "spacy==3.8.13"
 </div>
 
 ## Contributor
+
+Want to contribute to this repo? Welcome! Please read the [Contributing Guide](./CONTRIBUTING_EN.md) first: open an Issue proposal before starting a new algorithm chapter; fixes and docs improvements can go straight to a PR.
 
 <div align=center style="margin-top: 30px;">
   <a href="https://github.com/KMnO4-zx/agentic-rl-lab/graphs/contributors">

@@ -19,8 +19,8 @@
   },
   "docs/translations/en/search-r1.run.md": {
     "source": "03-search-r1/start.md",
-    "sourceSha256": "f2ca74fc6eab9439145a11c9b62aa154eed567890b0614a855656492d5d48d16",
-    "translatedAt": "2026-09-26",
+    "sourceSha256": "70d6c948595e4077edb00d3e336c6b3f5fb433536640569d6c2e62a60b35ece9",
+    "translatedAt": "2026-10-20",
     "engine": "Manual English translation; original code and equations preserved"
   },
   "docs/translations/en/opsd.run.md": {
@@ -139,8 +139,8 @@
   },
   "docs/translations/en/search-r1.md": {
     "source": "03-search-r1/readme.md",
-    "sourceSha256": "d2dd6371bff9ee0a5f36d792a888779cdc9a13339943f5a5c9bf7d5df6c664d7",
-    "translatedAt": "2026-09-26",
+    "sourceSha256": "e8247195d9a410072ae265f3127bc832fb593825d520c58f90c45f425a60ac13",
+    "translatedAt": "2026-10-20",
     "engine": "Manual English translation; original code and equations preserved"
   },
   "docs/translations/en/medical-opd.md": {

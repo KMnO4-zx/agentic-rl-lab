@@ -1,0 +1,57 @@
+name: 🐛 Bug 报告
+description: 报告某个章节的代码或文档中的问题
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈！如果是想提议新增算法章节，请改用「算法复现提案」模板。
+
+  - type: input
+    id: chapter
+    attributes:
+      label: 相关章节
+      description: 问题发生在哪个章节目录？
+      placeholder: 例如 03-search-r1
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 发生了什么？你期望的行为是什么？
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+      description: 从仓库根目录开始，给出能让维护者复现问题的最小步骤
+      value: |
+        1. uv sync
+        2. uv run python ...
+        3. 看到报错 ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 环境信息
+      value: |
+        - 操作系统：
+        - Python 版本：
+        - PyTRIO 版本：
+        - uv 版本：
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志 / 报错信息
+      description: 完整的报错堆栈或截图，请用代码块包裹
+      render: shell

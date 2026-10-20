@@ -96,6 +96,7 @@ uv sync --extra alfworld
 ```bash
 uv add \
   "datasets>=5.0.0" \
+  "httpx>=0.28.1" \
   "math-verify>=0.9.0" \
   "matplotlib>=3.11.0" \
   "modelscope>=1.38.1" \
@@ -109,11 +110,7 @@ uv add \
   "tqdm>=4.68.3"
 ```
 
-&emsp;&emsp;Search-R1 的 DeepSeek Search 后端使用固定源码版本：
-
-```bash
-uv add "deepseek-search @ git+https://github.com/KMnO4-zx/deepseek-search.git@6215c8dbb7347f94e9dcea6e741df5918449d6c4"
-```
+&emsp;&emsp;Search-R1 直接调用 DeepSeek 官方 Search API，使用 `httpx`，无需额外安装搜索封装。详见[快速启动指南](./03-search-r1/start.md)。
 
 &emsp;&emsp;ALFWorld 的 optional extra 对应：
 
@@ -128,6 +125,8 @@ uv add --optional alfworld "alfworld==0.4.2" "spacy==3.8.13"
 </div>
 
 ## Contributor
+
+&emsp;&emsp;想为这个仓库贡献内容？欢迎！请先阅读 [贡献指南](./CONTRIBUTING.md)：新增算法章节请先开 Issue 提案，修复和文档改进可以直接提 PR。
 
 <div align=center style="margin-top: 30px;">
   <a href="https://github.com/KMnO4-zx/agentic-rl-lab/graphs/contributors">
