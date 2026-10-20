@@ -485,7 +485,7 @@ def score_answer(text: str, references: list[str]) -> RewardResult:
 每道题采样 8 条轨迹，得到 8 个最终 reward。然后计算：
 
 ```math
-A_i = r_i - \operatorname{mean}(r_1, r_2, \ldots, r_8)
+A_i = r_i - \frac{1}{8}\sum_{j=1}^{8} r_j
 ```
 
 代码在 [`rollout.py`](https://github.com/KMnO4-zx/agentic-rl-lab/blob/main/03-search-r1/rollout.py)：
